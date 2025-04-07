@@ -39,7 +39,7 @@ export type Transaction = {
 };
 
 export type Report = {
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
   totalIncome: number;
   totalExpense: number;
   balance: number;

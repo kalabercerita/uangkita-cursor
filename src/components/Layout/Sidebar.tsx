@@ -30,7 +30,7 @@ const Sidebar = () => {
       <div className="p-4 flex items-center space-x-2">
         <Wallet className="h-8 w-8 text-finance-teal" />
         <span className="text-xl font-bold bg-gradient-to-r from-finance-teal to-finance-purple bg-clip-text text-transparent">
-          FinnyTracker
+          UangKita
         </span>
       </div>
 

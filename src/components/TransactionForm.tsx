@@ -41,6 +41,7 @@ const formSchema = z.object({
   type: z.enum(['income', 'expense']),
   categoryId: z.string({ required_error: 'Please select a category' }),
   date: z.date({ required_error: 'Please select a date' }),
+  walletId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -61,6 +62,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
       amount: '',
       type: 'expense',
       date: new Date(),
+      walletId: walletId || '',
     },
   });
   
@@ -78,7 +80,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
         type: values.type,
         categoryId: values.categoryId,
         date: values.date,
-        walletId: walletId || form.getValues('walletId'),
+        walletId: values.walletId || walletId || '',
       };
       
       addTransaction(transactionData);
@@ -90,6 +92,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
         type: 'expense',
         categoryId: undefined,
         date: new Date(),
+        walletId: walletId || '',
       });
       
       if (onSuccess) {

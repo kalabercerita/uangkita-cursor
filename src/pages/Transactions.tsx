@@ -20,15 +20,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Transaction as TransactionType } from '@/types';
+import TransactionForm from '@/components/TransactionForm';
 
 const Transactions = () => {
   const { transactions, categories, wallets } = useFinance();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'amount_high' | 'amount_low'>('newest');
+  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   
   // Filter and sort transactions
   const filteredTransactions = transactions
@@ -85,10 +92,17 @@ const Transactions = () => {
         <h2 className="text-3xl font-bold tracking-tight">
           Transactions
         </h2>
-        <Button className="bg-gradient-to-r from-finance-teal to-finance-purple hover:from-finance-teal/90 hover:to-finance-purple/90">
-          <Plus className="mr-2 h-4 w-4" /> 
-          Add Transaction
-        </Button>
+        <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-finance-teal to-finance-purple hover:from-finance-teal/90 hover:to-finance-purple/90">
+              <Plus className="mr-2 h-4 w-4" /> 
+              Add Transaction
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <TransactionForm onSuccess={() => setIsAddTransactionOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
       
       <div className="flex flex-col md:flex-row gap-4">
@@ -226,25 +240,115 @@ const Transactions = () => {
         </TabsContent>
         
         <TabsContent value="income">
-          {/* Income tab would have similar content but pre-filtered */}
           <Card>
-            <CardHeader>
-              <CardTitle>Income Transactions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>This tab would show only income transactions.</p>
+            <CardContent className="p-0">
+              <div className="rounded-md border">
+                <div className="grid grid-cols-6 bg-muted/50 p-4 font-medium">
+                  <div className="col-span-2">Description</div>
+                  <div>Category</div>
+                  <div>Date</div>
+                  <div>Wallet</div>
+                  <div className="text-right">Amount</div>
+                </div>
+                <div className="divide-y">
+                  {filteredTransactions.filter(t => t.type === 'income').length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No income transactions found.
+                    </div>
+                  ) : (
+                    filteredTransactions
+                      .filter(t => t.type === 'income')
+                      .map(transaction => {
+                        const category = categories.find(c => c.id === transaction.categoryId);
+                        const wallet = wallets.find(w => w.id === transaction.walletId);
+                        
+                        return (
+                          <div key={transaction.id} className="grid grid-cols-6 p-4 hover:bg-muted/20 transition-colors">
+                            <div className="col-span-2 flex items-center space-x-3">
+                              <div className="p-2 rounded-full bg-green-100">
+                                <TrendingUp className="h-4 w-4 text-finance-green" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{transaction.description}</p>
+                              </div>
+                            </div>
+                            <div className="self-center">
+                              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
+                                {category?.name || 'Uncategorized'}
+                              </span>
+                            </div>
+                            <div className="self-center text-muted-foreground">
+                              {formatDate(transaction.date)}
+                            </div>
+                            <div className="self-center">
+                              {wallet?.name || 'Unknown'}
+                            </div>
+                            <div className="self-center text-right font-medium text-finance-green">
+                              + {formatCurrency(transaction.amount)}
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="expense">
-          {/* Expense tab would have similar content but pre-filtered */}
           <Card>
-            <CardHeader>
-              <CardTitle>Expense Transactions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>This tab would show only expense transactions.</p>
+            <CardContent className="p-0">
+              <div className="rounded-md border">
+                <div className="grid grid-cols-6 bg-muted/50 p-4 font-medium">
+                  <div className="col-span-2">Description</div>
+                  <div>Category</div>
+                  <div>Date</div>
+                  <div>Wallet</div>
+                  <div className="text-right">Amount</div>
+                </div>
+                <div className="divide-y">
+                  {filteredTransactions.filter(t => t.type === 'expense').length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No expense transactions found.
+                    </div>
+                  ) : (
+                    filteredTransactions
+                      .filter(t => t.type === 'expense')
+                      .map(transaction => {
+                        const category = categories.find(c => c.id === transaction.categoryId);
+                        const wallet = wallets.find(w => w.id === transaction.walletId);
+                        
+                        return (
+                          <div key={transaction.id} className="grid grid-cols-6 p-4 hover:bg-muted/20 transition-colors">
+                            <div className="col-span-2 flex items-center space-x-3">
+                              <div className="p-2 rounded-full bg-red-100">
+                                <TrendingDown className="h-4 w-4 text-finance-red" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{transaction.description}</p>
+                              </div>
+                            </div>
+                            <div className="self-center">
+                              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
+                                {category?.name || 'Uncategorized'}
+                              </span>
+                            </div>
+                            <div className="self-center text-muted-foreground">
+                              {formatDate(transaction.date)}
+                            </div>
+                            <div className="self-center">
+                              {wallet?.name || 'Unknown'}
+                            </div>
+                            <div className="self-center text-right font-medium text-finance-red">
+                              - {formatCurrency(transaction.amount)}
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

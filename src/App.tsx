@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+import WalletDetail from "./pages/WalletDetail";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/transactions" element={<AppLayout><Transactions /></AppLayout>} />
               <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
               <Route path="/wallets" element={<AppLayout><Dashboard /></AppLayout>} />
+              <Route path="/wallet/:walletId" element={<AppLayout><WalletDetail /></AppLayout>} />
               <Route path="/settings" element={<AppLayout><Dashboard /></AppLayout>} />
 
               <Route path="*" element={<NotFound />} />

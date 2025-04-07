@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/contexts/FinanceContext';
+import WalletForm from '@/components/WalletForm';
 
 const Sidebar = () => {
   const { wallets } = useFinance();
@@ -91,9 +92,13 @@ const Sidebar = () => {
       </nav>
 
       <div className="p-4 border-t">
-        <Button className="w-full bg-gradient-to-r from-finance-teal to-finance-purple hover:from-finance-teal/90 hover:to-finance-purple/90">
-          <CreditCard className="mr-2 h-4 w-4" /> Add Wallet
-        </Button>
+        <WalletForm 
+          trigger={
+            <Button className="w-full bg-gradient-to-r from-finance-teal to-finance-purple hover:from-finance-teal/90 hover:to-finance-purple/90">
+              <CreditCard className="mr-2 h-4 w-4" /> Add Wallet
+            </Button>
+          }
+        />
       </div>
     </aside>
   );

@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Download, 
   ChevronLeft, 
   ChevronRight,
@@ -19,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -41,8 +50,19 @@ const Reports = () => {
   const { getReport, categories } = useFinance();
   const [period, setPeriod] = useState<Period>('monthly');
   const [chartType, setChartType] = useState<'bar' | 'pie' | 'line'>('bar');
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   
-  const report = getReport(period);
+  // Generate report based on period
+  const report = isCustomPeriod && dateRange.from && dateRange.to
+    ? getReport('custom', dateRange.from, dateRange.to)
+    : getReport(period);
   
   // Format large numbers for better display
   const formatCurrency = (value: number) => {
@@ -72,7 +92,7 @@ const Reports = () => {
     }))
     .sort((a, b) => b.value - a.value);
   
-  // Mock data for month-by-month chart
+  // Mock data for month-by-month chart (would be replaced with real data in a full implementation)
   const monthlyData = [
     { name: 'Jan', income: 4000, expense: 2400 },
     { name: 'Feb', income: 3000, expense: 1398 },
@@ -90,18 +110,51 @@ const Reports = () => {
   
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#a4de6c'];
   
-  return (
+  // Handle period change
+  const handlePeriodChange = (newPeriod: Period) => {
+    setPeriod(newPeriod);
+    setIsCustomPeriod(false);
+  };
+  
+  // Handle custom date range selection
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date }) => {
+    setDateRange({
+      from: range.from,
+      to: range.to
+    });
     
+    if (range.from && range.to) {
+      setIsCustomPeriod(true);
+    }
+  };
+  
+  return (
     <div className="space-y-6 py-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 className="text-3xl font-bold tracking-tight">
           Financial Reports
         </h2>
         <div className="flex items-center space-x-2">
-          <Button variant="outline">
-            <Calendar className="mr-2 h-4 w-4" /> 
-            Custom Range
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <CalendarIcon className="mr-2 h-4 w-4" /> 
+                {isCustomPeriod && dateRange.from && dateRange.to
+                  ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
+                  : "Custom Range"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={handleDateRangeSelect}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> 
             Export
@@ -122,7 +175,7 @@ const Reports = () => {
               {formatCurrency(report.totalIncome)}
             </div>
             <p className="text-xs text-muted-foreground">
-              For {period} period
+              For {isCustomPeriod ? "selected period" : period} period
             </p>
           </CardContent>
         </Card>
@@ -139,7 +192,7 @@ const Reports = () => {
               {formatCurrency(report.totalExpense)}
             </div>
             <p className="text-xs text-muted-foreground">
-              For {period} period
+              For {isCustomPeriod ? "selected period" : period} period
             </p>
           </CardContent>
         </Card>
@@ -167,36 +220,36 @@ const Reports = () => {
         </Card>
       </div>
       
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setPeriod('daily')} 
-          className={period === 'daily' ? 'bg-finance-teal text-white' : ''}
+          onClick={() => handlePeriodChange('daily')} 
+          className={!isCustomPeriod && period === 'daily' ? 'bg-finance-teal text-white' : ''}
         >
           Daily
         </Button>
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setPeriod('weekly')} 
-          className={period === 'weekly' ? 'bg-finance-teal text-white' : ''}
+          onClick={() => handlePeriodChange('weekly')} 
+          className={!isCustomPeriod && period === 'weekly' ? 'bg-finance-teal text-white' : ''}
         >
           Weekly
         </Button>
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setPeriod('monthly')} 
-          className={period === 'monthly' ? 'bg-finance-teal text-white' : ''}
+          onClick={() => handlePeriodChange('monthly')} 
+          className={!isCustomPeriod && period === 'monthly' ? 'bg-finance-teal text-white' : ''}
         >
           Monthly
         </Button>
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setPeriod('yearly')} 
-          className={period === 'yearly' ? 'bg-finance-teal text-white' : ''}
+          onClick={() => handlePeriodChange('yearly')} 
+          className={!isCustomPeriod && period === 'yearly' ? 'bg-finance-teal text-white' : ''}
         >
           Yearly
         </Button>
@@ -290,7 +343,11 @@ const Reports = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {incomeCategoriesData.map((category, index) => (
+                  {incomeCategoriesData.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      No income data for this period.
+                    </div>
+                  ) : incomeCategoriesData.map((category, index) => (
                     <div key={index}>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{category.name}</span>
@@ -315,7 +372,11 @@ const Reports = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {expenseCategoriesData.map((category, index) => (
+                  {expenseCategoriesData.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      No expense data for this period.
+                    </div>
+                  ) : expenseCategoriesData.map((category, index) => (
                     <div key={index}>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{category.name}</span>

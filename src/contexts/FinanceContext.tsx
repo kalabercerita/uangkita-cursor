@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from './AuthContext';
@@ -13,21 +12,21 @@ import {
 
 // Default categories
 const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat1', name: 'Salary', type: 'income', color: '#48BB78', icon: 'wallet' },
-  { id: 'cat2', name: 'Food', type: 'expense', color: '#F56565', icon: 'utensils' },
-  { id: 'cat3', name: 'Transportation', type: 'expense', color: '#4299E1', icon: 'car' },
-  { id: 'cat4', name: 'Shopping', type: 'expense', color: '#ECC94B', icon: 'shopping-bag' },
-  { id: 'cat5', name: 'Entertainment', type: 'expense', color: '#9F7AEA', icon: 'film' },
-  { id: 'cat6', name: 'Bills', type: 'expense', color: '#ED8936', icon: 'file-invoice' },
-  { id: 'cat7', name: 'Health', type: 'expense', color: '#38B2AC', icon: 'heart' },
-  { id: 'cat8', name: 'Investment', type: 'income', color: '#48BB78', icon: 'chart-line' },
-  { id: 'cat9', name: 'Gifts', type: 'income', color: '#9F7AEA', icon: 'gift' },
+  { id: 'cat1', name: 'Gaji', type: 'income', color: '#48BB78', icon: 'wallet' },
+  { id: 'cat2', name: 'Makanan', type: 'expense', color: '#F56565', icon: 'utensils' },
+  { id: 'cat3', name: 'Transportasi', type: 'expense', color: '#4299E1', icon: 'car' },
+  { id: 'cat4', name: 'Belanja', type: 'expense', color: '#ECC94B', icon: 'shopping-bag' },
+  { id: 'cat5', name: 'Hiburan', type: 'expense', color: '#9F7AEA', icon: 'film' },
+  { id: 'cat6', name: 'Tagihan', type: 'expense', color: '#ED8936', icon: 'file-invoice' },
+  { id: 'cat7', name: 'Kesehatan', type: 'expense', color: '#38B2AC', icon: 'heart' },
+  { id: 'cat8', name: 'Investasi', type: 'income', color: '#48BB78', icon: 'chart-line' },
+  { id: 'cat9', name: 'Hadiah', type: 'income', color: '#9F7AEA', icon: 'gift' },
 ];
 
 // Default wallets
 const DEFAULT_WALLETS: Wallet[] = [
-  { id: 'wallet1', name: 'Cash', balance: 1000, currency: 'USD', userId: '1', color: '#48BB78', icon: 'cash' },
-  { id: 'wallet2', name: 'Bank Account', balance: 5000, currency: 'USD', userId: '1', color: '#4299E1', icon: 'bank' },
+  { id: 'wallet1', name: 'Tunai', balance: 1000000, currency: 'IDR', userId: '1', color: '#48BB78', icon: 'cash' },
+  { id: 'wallet2', name: 'Rekening Bank', balance: 5000000, currency: 'IDR', userId: '1', color: '#4299E1', icon: 'bank' },
 ];
 
 type FinanceContextType = {
@@ -168,8 +167,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Wallet added",
-      description: `${walletData.name} has been added to your wallets`,
+      title: "Dompet ditambahkan",
+      description: `${walletData.name} telah ditambahkan ke dompet Anda`,
     });
   };
 
@@ -181,8 +180,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Wallet updated",
-      description: `${wallet.name} has been updated`,
+      title: "Dompet diperbarui",
+      description: `${wallet.name} telah diperbarui`,
     });
   };
 
@@ -200,8 +199,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
     
     toast({
-      title: "Wallet deleted",
-      description: "The wallet and its transactions have been deleted",
+      title: "Dompet dihapus",
+      description: "Dompet dan transaksinya telah dihapus",
     });
   };
 
@@ -247,8 +246,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Transaction added",
-      description: `${transactionData.description} has been recorded`,
+      title: "Transaksi ditambahkan",
+      description: `${transactionData.description} telah dicatat`,
     });
   };
 
@@ -297,8 +296,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Transaction updated",
-      description: `${transaction.description} has been updated`,
+      title: "Transaksi diperbarui",
+      description: `${transaction.description} telah diperbarui`,
     });
   };
 
@@ -330,8 +329,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Transaction deleted",
-      description: "The transaction has been deleted",
+      title: "Transaksi dihapus",
+      description: "Transaksi telah dihapus",
     });
   };
 
@@ -351,8 +350,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Category added",
-      description: `${categoryData.name} has been added to your categories`,
+      title: "Kategori ditambahkan",
+      description: `${categoryData.name} telah ditambahkan ke kategori Anda`,
     });
   };
 
@@ -363,8 +362,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Category updated",
-      description: `${category.name} has been updated`,
+      title: "Kategori diperbarui",
+      description: `${category.name} telah diperbarui`,
     });
   };
 
@@ -374,8 +373,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     if (inUse) {
       toast({
-        title: "Cannot delete category",
-        description: "This category is being used by transactions",
+        title: "Tidak dapat menghapus kategori",
+        description: "Kategori ini sedang digunakan oleh transaksi",
         variant: "destructive",
       });
       return;
@@ -387,12 +386,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
     
     toast({
-      title: "Category deleted",
-      description: "The category has been deleted",
+      title: "Kategori dihapus",
+      description: "Kategori telah dihapus",
     });
   };
 
-  // Reporting functions
+  // Reports with improved period filtering
   const getReport = (period: Period, startDate?: Date, endDate?: Date): Report => {
     let filteredTransactions = [...state.transactions];
     const now = new Date();
@@ -426,9 +425,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return transDate >= lastYear;
       });
     } else if (period === 'custom' && startDate && endDate) {
+      // For custom period, ensure end date includes the entire day
+      const adjustedEndDate = new Date(endDate);
+      adjustedEndDate.setHours(23, 59, 59, 999);
+      
       filteredTransactions = filteredTransactions.filter(t => {
         const transDate = new Date(t.date);
-        return transDate >= startDate && transDate <= endDate;
+        return transDate >= startDate && transDate <= adjustedEndDate;
       });
     }
     
@@ -455,9 +458,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
       }
       
-      if (transaction.type === 'income' || transaction.type === 'expense') {
-        groups[category.id].amount += 
-          transaction.type === 'income' ? transaction.amount : transaction.amount;
+      if (transaction.type === 'income') {
+        groups[category.id].amount += transaction.amount;
+      } else if (transaction.type === 'expense') {
+        groups[category.id].amount -= transaction.amount;
       }
       
       return groups;

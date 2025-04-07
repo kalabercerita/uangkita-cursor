@@ -33,11 +33,11 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { Wallet, Plus } from 'lucide-react';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Wallet name is required' }),
+  name: z.string().min(2, { message: 'Nama dompet diperlukan' }),
   balance: z.string().refine(val => !isNaN(Number(val)) && Number(val) >= 0, {
-    message: 'Initial balance must be a non-negative number',
+    message: 'Saldo awal harus berupa angka non-negatif',
   }),
-  currency: z.string().min(1, { message: 'Currency is required' }),
+  currency: z.string().min(1, { message: 'Mata uang diperlukan' }),
   color: z.string().optional(),
   icon: z.string().optional(),
 });
@@ -62,7 +62,7 @@ const WalletForm: React.FC<WalletFormProps> = ({
     defaultValues: {
       name: '',
       balance: '0',
-      currency: 'USD',
+      currency: 'IDR',
       color: 'teal',
       icon: 'wallet',
     },
@@ -98,22 +98,22 @@ const WalletForm: React.FC<WalletFormProps> = ({
   
   const colorOptions = [
     { value: 'teal', label: 'Teal' },
-    { value: 'purple', label: 'Purple' },
-    { value: 'blue', label: 'Blue' },
-    { value: 'green', label: 'Green' },
-    { value: 'yellow', label: 'Yellow' },
-    { value: 'orange', label: 'Orange' },
-    { value: 'red', label: 'Red' },
-    { value: 'pink', label: 'Pink' },
+    { value: 'purple', label: 'Ungu' },
+    { value: 'blue', label: 'Biru' },
+    { value: 'green', label: 'Hijau' },
+    { value: 'yellow', label: 'Kuning' },
+    { value: 'orange', label: 'Oranye' },
+    { value: 'red', label: 'Merah' },
+    { value: 'pink', label: 'Merah Muda' },
   ];
   
   const currencyOptions = [
-    { value: 'USD', label: 'US Dollar (USD)' },
+    { value: 'IDR', label: 'Rupiah Indonesia (IDR)' },
+    { value: 'USD', label: 'Dolar AS (USD)' },
     { value: 'EUR', label: 'Euro (EUR)' },
-    { value: 'GBP', label: 'British Pound (GBP)' },
-    { value: 'JPY', label: 'Japanese Yen (JPY)' },
-    { value: 'IDR', label: 'Indonesian Rupiah (IDR)' },
-    { value: 'CNY', label: 'Chinese Yuan (CNY)' },
+    { value: 'GBP', label: 'Pound Inggris (GBP)' },
+    { value: 'JPY', label: 'Yen Jepang (JPY)' },
+    { value: 'CNY', label: 'Yuan Tiongkok (CNY)' },
   ];
   
   return (
@@ -121,15 +121,15 @@ const WalletForm: React.FC<WalletFormProps> = ({
       <DialogTrigger asChild>
         {trigger || (
           <Button className="w-full bg-gradient-to-r from-finance-teal to-finance-purple hover:from-finance-teal/90 hover:to-finance-purple/90">
-            <Plus className="mr-2 h-4 w-4" /> Add Wallet
+            <Plus className="mr-2 h-4 w-4" /> Tambah Dompet
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Wallet</DialogTitle>
+          <DialogTitle>Tambah Dompet Baru</DialogTitle>
           <DialogDescription>
-            Create a new wallet to track your finances
+            Buat dompet baru untuk melacak keuangan Anda
           </DialogDescription>
         </DialogHeader>
         
@@ -140,9 +140,9 @@ const WalletForm: React.FC<WalletFormProps> = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Wallet Name</FormLabel>
+                  <FormLabel>Nama Dompet</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Cash, Bank Account" {...field} />
+                    <Input placeholder="mis., Tunai, Rekening Bank" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -154,13 +154,13 @@ const WalletForm: React.FC<WalletFormProps> = ({
               name="balance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Initial Balance</FormLabel>
+                  <FormLabel>Saldo Awal</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
-                      placeholder="0.00" 
+                      placeholder="0" 
                       min="0" 
-                      step="0.01" 
+                      step="1000" 
                       {...field} 
                     />
                   </FormControl>
@@ -174,14 +174,14 @@ const WalletForm: React.FC<WalletFormProps> = ({
               name="currency"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Currency</FormLabel>
+                  <FormLabel>Mata Uang</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select currency" />
+                        <SelectValue placeholder="Pilih mata uang" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -202,14 +202,14 @@ const WalletForm: React.FC<WalletFormProps> = ({
               name="color"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Color</FormLabel>
+                  <FormLabel>Warna</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select color" />
+                        <SelectValue placeholder="Pilih warna" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -231,14 +231,14 @@ const WalletForm: React.FC<WalletFormProps> = ({
                 variant="outline" 
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                Batal
               </Button>
               <Button 
                 type="submit" 
                 className="bg-gradient-to-r from-finance-teal to-finance-purple"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Adding...' : 'Add Wallet'}
+                {isSubmitting ? 'Menambahkan...' : 'Tambah Dompet'}
               </Button>
             </div>
           </form>

@@ -27,8 +27,8 @@ const WalletDetail = () => {
       setCurrentWallet(wallet);
     } else {
       toast({
-        title: "Wallet not found",
-        description: "The wallet you're looking for doesn't exist.",
+        title: "Wallet tidak ditemukan",
+        description: "Dompet yang Anda cari tidak ada.",
         variant: "destructive"
       });
       navigate('/');
@@ -40,7 +40,7 @@ const WalletDetail = () => {
   }, [walletId, wallet, setCurrentWallet, navigate, toast]);
   
   if (!wallet) {
-    return null;
+    return <div className="p-8 text-center">Loading...</div>;
   }
   
   // Get transactions for this wallet
@@ -61,6 +61,8 @@ const WalletDetail = () => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: wallet.currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
   
@@ -92,7 +94,7 @@ const WalletDetail = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
+            <CardTitle className="text-sm font-medium">Saldo Saat Ini</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(wallet.balance)}</div>
@@ -101,7 +103,7 @@ const WalletDetail = () => {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-finance-green">Total Income</CardTitle>
+            <CardTitle className="text-sm font-medium text-finance-green">Total Pemasukan</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-finance-green">{formatCurrency(income)}</div>
@@ -110,7 +112,7 @@ const WalletDetail = () => {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-finance-red">Total Expense</CardTitle>
+            <CardTitle className="text-sm font-medium text-finance-red">Total Pengeluaran</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-finance-red">{formatCurrency(expense)}</div>
@@ -122,15 +124,15 @@ const WalletDetail = () => {
         <div className="md:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
+              <CardTitle>Transaksi Terbaru</CardTitle>
               <CardDescription>
-                Latest activity in this wallet
+                Aktivitas terbaru di dompet ini
               </CardDescription>
             </CardHeader>
             <CardContent>
               {walletTransactions.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
-                  No transactions found for this wallet.
+                  Tidak ada transaksi untuk dompet ini.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -171,7 +173,7 @@ const WalletDetail = () => {
                       className="w-full"
                       onClick={() => navigate('/transactions')}
                     >
-                      View All Transactions
+                      Lihat Semua Transaksi
                     </Button>
                   )}
                 </div>

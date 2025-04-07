@@ -34,13 +34,13 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
-  description: z.string().min(2, { message: 'Description is required' }),
+  description: z.string().min(2, { message: 'Deskripsi diperlukan' }),
   amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
-    message: 'Amount must be a positive number',
+    message: 'Jumlah harus berupa angka positif',
   }),
   type: z.enum(['income', 'expense']),
-  categoryId: z.string({ required_error: 'Please select a category' }),
-  date: z.date({ required_error: 'Please select a date' }),
+  categoryId: z.string({ required_error: 'Silakan pilih kategori' }),
+  date: z.date({ required_error: 'Silakan pilih tanggal' }),
   walletId: z.string().optional(),
 });
 
@@ -108,8 +108,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add Transaction</CardTitle>
-        <CardDescription>Record a new transaction</CardDescription>
+        <CardTitle>Tambah Transaksi</CardTitle>
+        <CardDescription>Catat transaksi baru</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -119,19 +119,19 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Transaction Type</FormLabel>
+                  <FormLabel>Jenis Transaksi</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder="Pilih jenis" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
+                      <SelectItem value="income">Pemasukan</SelectItem>
+                      <SelectItem value="expense">Pengeluaran</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -144,9 +144,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Deskripsi</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Groceries, Salary" {...field} />
+                    <Input placeholder="mis., Belanja, Gaji" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -158,13 +158,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Jumlah</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
-                      placeholder="0.00" 
+                      placeholder="0" 
                       min="0" 
-                      step="0.01" 
+                      step="1000" 
                       {...field} 
                     />
                   </FormControl>
@@ -178,14 +178,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
               name="categoryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Kategori</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Pilih kategori" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -207,14 +207,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
                 name="walletId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Wallet</FormLabel>
+                    <FormLabel>Dompet</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select wallet" />
+                          <SelectValue placeholder="Pilih dompet" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -236,7 +236,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
               name="date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Date</FormLabel>
+                  <FormLabel>Tanggal</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -248,9 +248,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "dd MMMM yyyy")
                           ) : (
-                            <span>Pick a date</span>
+                            <span>Pilih tanggal</span>
                           )}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -262,7 +262,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
                         selected={field.value}
                         onSelect={field.onChange}
                         initialFocus
-                        className={cn("p-3 pointer-events-auto")}
+                        className="pointer-events-auto p-3"
                       />
                     </PopoverContent>
                   </Popover>
@@ -276,7 +276,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
               className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Adding...' : 'Add Transaction'}
+              {isSubmitting ? 'Menambahkan...' : 'Tambah Transaksi'}
             </Button>
           </form>
         </Form>

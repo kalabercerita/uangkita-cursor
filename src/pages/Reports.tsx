@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, 
   Download, 
@@ -60,15 +60,21 @@ const Reports = () => {
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   
   // Generate report based on period
-  const report = isCustomPeriod && dateRange.from && dateRange.to
-    ? getReport('custom', dateRange.from, dateRange.to)
-    : getReport(period);
+  const report = React.useMemo(() => {
+    if (isCustomPeriod && dateRange.from && dateRange.to) {
+      return getReport('custom', dateRange.from, dateRange.to);
+    } else {
+      return getReport(period);
+    }
+  }, [isCustomPeriod, period, dateRange.from, dateRange.to, getReport]);
   
   // Format large numbers for better display
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('id-ID', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(value);
   };
   
@@ -92,7 +98,7 @@ const Reports = () => {
     }))
     .sort((a, b) => b.value - a.value);
   
-  // Mock data for month-by-month chart (would be replaced with real data in a full implementation)
+  // Data for month-by-month chart
   const monthlyData = [
     { name: 'Jan', income: 4000, expense: 2400 },
     { name: 'Feb', income: 3000, expense: 1398 },
@@ -127,12 +133,25 @@ const Reports = () => {
       setIsCustomPeriod(true);
     }
   };
+
+  // Format period name
+  const formatPeriodName = () => {
+    if (isCustomPeriod) return "periode yang dipilih";
+    
+    switch(period) {
+      case 'daily': return "harian";
+      case 'weekly': return "mingguan";
+      case 'monthly': return "bulanan";
+      case 'yearly': return "tahunan";
+      default: return period;
+    }
+  };
   
   return (
     <div className="space-y-6 py-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 className="text-3xl font-bold tracking-tight">
-          Financial Reports
+          Laporan Keuangan
         </h2>
         <div className="flex items-center space-x-2">
           <Popover>
@@ -140,8 +159,8 @@ const Reports = () => {
               <Button variant="outline">
                 <CalendarIcon className="mr-2 h-4 w-4" /> 
                 {isCustomPeriod && dateRange.from && dateRange.to
-                  ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
-                  : "Custom Range"}
+                  ? `${format(dateRange.from, "dd MMM")} - ${format(dateRange.to, "dd MMM")}`
+                  : "Pilih Periode"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -157,7 +176,7 @@ const Reports = () => {
           
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> 
-            Export
+            Ekspor
           </Button>
         </div>
       </div>
@@ -166,7 +185,7 @@ const Reports = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Income
+              Total Pemasukan
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-finance-green" />
           </CardHeader>
@@ -175,7 +194,7 @@ const Reports = () => {
               {formatCurrency(report.totalIncome)}
             </div>
             <p className="text-xs text-muted-foreground">
-              For {isCustomPeriod ? "selected period" : period} period
+              Untuk periode {formatPeriodName()}
             </p>
           </CardContent>
         </Card>
@@ -183,7 +202,7 @@ const Reports = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Expenses
+              Total Pengeluaran
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-finance-red rotate-180" />
           </CardHeader>
@@ -192,7 +211,7 @@ const Reports = () => {
               {formatCurrency(report.totalExpense)}
             </div>
             <p className="text-xs text-muted-foreground">
-              For {isCustomPeriod ? "selected period" : period} period
+              Untuk periode {formatPeriodName()}
             </p>
           </CardContent>
         </Card>
@@ -200,7 +219,7 @@ const Reports = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Net Balance
+              Saldo Bersih
             </CardTitle>
             <BarChart2 className="h-4 w-4 text-finance-teal" />
           </CardHeader>
@@ -209,7 +228,7 @@ const Reports = () => {
               {formatCurrency(report.balance)}
             </div>
             <div className="text-xs text-muted-foreground flex items-center justify-between mt-1">
-              <span>Savings Rate:</span>
+              <span>Tingkat Tabungan:</span>
               <span className={report.balance >= 0 ? 'text-finance-green' : 'text-finance-red'}>
                 {report.totalIncome > 0 
                   ? `${Math.round(((report.totalIncome - report.totalExpense) / report.totalIncome) * 100)}%` 
@@ -227,7 +246,7 @@ const Reports = () => {
           onClick={() => handlePeriodChange('daily')} 
           className={!isCustomPeriod && period === 'daily' ? 'bg-finance-teal text-white' : ''}
         >
-          Daily
+          Harian
         </Button>
         <Button 
           variant="outline" 
@@ -235,7 +254,7 @@ const Reports = () => {
           onClick={() => handlePeriodChange('weekly')} 
           className={!isCustomPeriod && period === 'weekly' ? 'bg-finance-teal text-white' : ''}
         >
-          Weekly
+          Mingguan
         </Button>
         <Button 
           variant="outline" 
@@ -243,7 +262,7 @@ const Reports = () => {
           onClick={() => handlePeriodChange('monthly')} 
           className={!isCustomPeriod && period === 'monthly' ? 'bg-finance-teal text-white' : ''}
         >
-          Monthly
+          Bulanan
         </Button>
         <Button 
           variant="outline" 
@@ -251,10 +270,10 @@ const Reports = () => {
           onClick={() => handlePeriodChange('yearly')} 
           className={!isCustomPeriod && period === 'yearly' ? 'bg-finance-teal text-white' : ''}
         >
-          Yearly
+          Tahunan
         </Button>
         <div className="ml-auto flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">Chart Type:</span>
+          <span className="text-sm text-muted-foreground">Jenis Grafik:</span>
           <Button 
             variant="ghost" 
             size="sm" 
@@ -276,17 +295,17 @@ const Reports = () => {
       
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="income">Income</TabsTrigger>
+          <TabsTrigger value="overview">Ikhtisar</TabsTrigger>
+          <TabsTrigger value="expenses">Pengeluaran</TabsTrigger>
+          <TabsTrigger value="income">Pemasukan</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Income vs Expenses</CardTitle>
+              <CardTitle>Pemasukan vs Pengeluaran</CardTitle>
               <CardDescription>
-                Comparing income and expenses over time
+                Perbandingan pemasukan dan pengeluaran dari waktu ke waktu
               </CardDescription>
             </CardHeader>
             <CardContent className="h-80">
@@ -306,16 +325,16 @@ const Reports = () => {
                     <YAxis />
                     <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                     <Legend />
-                    <Bar dataKey="income" name="Income" fill="#48BB78" />
-                    <Bar dataKey="expense" name="Expense" fill="#F56565" />
+                    <Bar dataKey="income" name="Pemasukan" fill="#48BB78" />
+                    <Bar dataKey="expense" name="Pengeluaran" fill="#F56565" />
                   </BarChart>
                 ) : (
                   <PieChart>
                     <Legend />
                     <Pie
                       data={[
-                        { name: 'Income', value: report.totalIncome },
-                        { name: 'Expenses', value: Math.abs(report.totalExpense) },
+                        { name: 'Pemasukan', value: report.totalIncome },
+                        { name: 'Pengeluaran', value: Math.abs(report.totalExpense) },
                       ]}
                       cx="50%"
                       cy="50%"
@@ -338,14 +357,14 @@ const Reports = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Income Breakdown</CardTitle>
-                <CardDescription>By category</CardDescription>
+                <CardTitle>Rincian Pemasukan</CardTitle>
+                <CardDescription>Berdasarkan kategori</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {incomeCategoriesData.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground">
-                      No income data for this period.
+                      Tidak ada data pemasukan untuk periode ini.
                     </div>
                   ) : incomeCategoriesData.map((category, index) => (
                     <div key={index}>
@@ -367,14 +386,14 @@ const Reports = () => {
             
             <Card>
               <CardHeader>
-                <CardTitle>Expense Breakdown</CardTitle>
-                <CardDescription>By category</CardDescription>
+                <CardTitle>Rincian Pengeluaran</CardTitle>
+                <CardDescription>Berdasarkan kategori</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {expenseCategoriesData.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground">
-                      No expense data for this period.
+                      Tidak ada data pengeluaran untuk periode ini.
                     </div>
                   ) : expenseCategoriesData.map((category, index) => (
                     <div key={index}>

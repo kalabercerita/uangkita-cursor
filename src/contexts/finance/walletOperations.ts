@@ -1,5 +1,4 @@
 
-
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet } from '@/types';
 import { DbWallet } from '@/utils/supabase-types';
@@ -9,7 +8,7 @@ export const loadWallets = async () => {
   const { data: walletsData, error: walletsError } = await supabase
     .from('wallets')
     .select('*')
-    .order('name') as { data: DbWallet[] | null; error: any };
+    .order('name');
   
   if (walletsError) throw walletsError;
   
@@ -30,7 +29,7 @@ export const createDefaultWallet = async (userId: string) => {
     .from('wallets')
     .insert(defaultWallet)
     .select()
-    .single() as { data: DbWallet | null; error: any };
+    .single();
   
   if (newWalletError) throw newWalletError;
   
@@ -52,7 +51,7 @@ export const addWalletOperation = async (walletData: Omit<Wallet, 'id' | 'userId
       .from('wallets')
       .insert(newWalletData)
       .select()
-      .single() as { data: DbWallet | null; error: any };
+      .single();
     
     if (error) throw error;
     
@@ -96,7 +95,7 @@ export const updateWalletOperation = async (wallet: Wallet, showToast: ToastType
         color: wallet.color,
         icon: wallet.icon
       })
-      .eq('id', wallet.id) as { error: any };
+      .eq('id', wallet.id);
     
     if (error) throw error;
     
@@ -122,7 +121,7 @@ export const deleteWalletOperation = async (walletId: string, showToast: ToastTy
     const { error } = await supabase
       .from('wallets')
       .delete()
-      .eq('id', walletId) as { error: any };
+      .eq('id', walletId);
     
     if (error) throw error;
     
@@ -142,4 +141,3 @@ export const deleteWalletOperation = async (walletId: string, showToast: ToastTy
     throw error;
   }
 };
-

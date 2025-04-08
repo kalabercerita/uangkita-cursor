@@ -1,5 +1,4 @@
 
-
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction, Wallet } from '@/types';
 import { DbTransaction } from '@/utils/supabase-types';
@@ -9,7 +8,7 @@ export const loadTransactions = async () => {
   const { data: transactionsData, error: transactionsError } = await supabase
     .from('transactions')
     .select('*')
-    .order('date', { ascending: false }) as { data: DbTransaction[] | null; error: any };
+    .order('date', { ascending: false });
   
   if (transactionsError) throw transactionsError;
   
@@ -43,7 +42,7 @@ export const addTransactionOperation = async (
       .from('transactions')
       .insert(newTransactionData)
       .select()
-      .single() as { data: DbTransaction | null; error: any };
+      .single();
     
     if (error) throw error;
     
@@ -64,7 +63,7 @@ export const addTransactionOperation = async (
       const { error: walletError } = await supabase
         .from('wallets')
         .update({ balance: updatedWallet.balance })
-        .eq('id', updatedWallet.id) as { error: any };
+        .eq('id', updatedWallet.id);
       
       if (walletError) throw walletError;
       
@@ -110,7 +109,7 @@ export const updateTransactionOperation = async (
       .from('transactions')
       .select('*')
       .eq('id', transaction.id)
-      .single() as { data: DbTransaction | null; error: any };
+      .single();
     
     if (originalTransaction.error || !originalTransaction.data) {
       throw new Error('Transaction not found');
@@ -143,7 +142,7 @@ export const updateTransactionOperation = async (
         wallet_id: transaction.walletId,
         date: formattedDate
       })
-      .eq('id', transaction.id) as { error: any };
+      .eq('id', transaction.id);
     
     if (error) throw error;
     
@@ -243,7 +242,7 @@ export const deleteTransactionOperation = async (
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', transactionId) as { error: any };
+      .eq('id', transactionId);
     
     if (error) throw error;
     
@@ -260,7 +259,7 @@ export const deleteTransactionOperation = async (
       const { error: walletError } = await supabase
         .from('wallets')
         .update({ balance: updatedWallet.balance })
-        .eq('id', updatedWallet.id) as { error: any };
+        .eq('id', updatedWallet.id);
       
       if (walletError) throw walletError;
       
@@ -283,4 +282,3 @@ export const deleteTransactionOperation = async (
     throw error;
   }
 };
-

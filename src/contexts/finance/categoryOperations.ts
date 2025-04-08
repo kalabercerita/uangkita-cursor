@@ -1,5 +1,4 @@
 
-
 import { supabase } from "@/integrations/supabase/client";
 import { Category } from '@/types';
 import { DbCategory } from '@/utils/supabase-types';
@@ -9,7 +8,7 @@ export const loadCategories = async () => {
   const { data: categoriesData, error: categoriesError } = await supabase
     .from('categories')
     .select('*')
-    .order('name') as { data: DbCategory[] | null; error: any };
+    .order('name');
   
   if (categoriesError) throw categoriesError;
   
@@ -34,7 +33,7 @@ export const addCategoryOperation = async (
       .from('categories')
       .insert(newCategoryData)
       .select()
-      .single() as { data: DbCategory | null; error: any };
+      .single();
     
     if (error) throw error;
     
@@ -77,7 +76,7 @@ export const updateCategoryOperation = async (category: Category, showToast: Toa
         color: category.color,
         icon: category.icon
       })
-      .eq('id', category.id) as { error: any };
+      .eq('id', category.id);
     
     if (error) throw error;
     
@@ -119,7 +118,7 @@ export const deleteCategoryOperation = async (
     const { error } = await supabase
       .from('categories')
       .delete()
-      .eq('id', categoryId) as { error: any };
+      .eq('id', categoryId);
     
     if (error) throw error;
     
@@ -139,4 +138,3 @@ export const deleteCategoryOperation = async (
     throw error;
   }
 };
-

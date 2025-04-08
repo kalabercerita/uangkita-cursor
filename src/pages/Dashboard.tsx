@@ -31,11 +31,19 @@ import {
   LineChart,
   Line
 } from 'recharts';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import TransactionForm from '@/components/TransactionForm';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { wallets, transactions, categories, getReport } = useFinance();
   const [period, setPeriod] = useState<Period>('monthly');
+  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
   const report = getReport(period);
   
@@ -55,9 +63,11 @@ const Dashboard = () => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
   
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('id-ID', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(value);
   };
 
@@ -69,17 +79,38 @@ const Dashboard = () => {
     <div className="space-y-6 py-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">
-          Welcome back, {user?.name || 'User'}
+          Selamat datang kembali, {user?.name || 'Pengguna'}
         </h2>
         <div className="flex items-center space-x-2">
-          <Button variant="outline">
-            <Calendar className="mr-2 h-4 w-4" /> 
-            Select Date
-          </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> 
-            Add Transaction
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <Calendar className="mr-2 h-4 w-4" /> 
+                Pilih Tanggal
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+                className="pointer-events-auto p-3"
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> 
+                Tambah Transaksi
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <TransactionForm onSuccess={() => setIsAddTransactionOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       

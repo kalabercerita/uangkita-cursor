@@ -140,7 +140,10 @@ const Sidebar = () => {
                 <WalletForm 
                   trigger={null}
                   onSuccess={() => {
-                    document.querySelector('[data-drawer-close]')?.click();
+                    const drawerCloseEl = document.querySelector('[data-drawer-close]');
+                    if (drawerCloseEl && 'click' in drawerCloseEl) {
+                      (drawerCloseEl as HTMLElement).click();
+                    }
                   }}
                 />
               </div>
@@ -202,7 +205,10 @@ const Sidebar = () => {
                 <div className="p-4 max-h-[85vh] overflow-y-auto">
                   <TransactionForm 
                     onSuccess={() => {
-                      document.querySelector('[data-drawer-close]')?.click();
+                      const drawerCloseEl = document.querySelector('[data-drawer-close]');
+                      if (drawerCloseEl && 'click' in drawerCloseEl) {
+                        (drawerCloseEl as HTMLElement).click();
+                      }
                     }}
                   />
                 </div>

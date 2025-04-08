@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, FileImage, FilePdf } from 'lucide-react';
+import { Download, FileSpreadsheet, FileImage, File } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useFinance } from '@/contexts/FinanceContext';
 import { jsPDF } from 'jspdf';
@@ -186,7 +186,7 @@ const ExportMenu: React.FC<ExportMenuProps> = ({ contentRef, title = 'UangKita' 
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem onClick={exportToPDF}>
-          <FilePdf className="mr-2 h-4 w-4" />
+          <File className="mr-2 h-4 w-4" />
           Export ke PDF
         </DropdownMenuItem>
         <DropdownMenuItem onClick={exportToPNG}>

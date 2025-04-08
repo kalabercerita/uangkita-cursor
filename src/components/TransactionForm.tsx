@@ -34,12 +34,13 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types';
 
+// Update the schema to match the Transaction type
 const formSchema = z.object({
   description: z.string().min(2, { message: 'Deskripsi diperlukan' }),
   amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
     message: 'Jumlah harus berupa angka positif',
   }),
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'transfer']),
   categoryId: z.string({ required_error: 'Silakan pilih kategori' }),
   date: z.date({ required_error: 'Silakan pilih tanggal' }),
   walletId: z.string().optional(),
@@ -86,7 +87,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
   
   // Filter categories based on selected type
   const selectedType = form.watch('type');
-  const filteredCategories = categories.filter(category => category.type === selectedType);
+  
+  // Only show income and expense categories (skip transfer for now)
+  const filteredCategories = categories.filter(category => 
+    (selectedType === 'income' || selectedType === 'expense') ? 
+    category.type === selectedType : category.type === 'expense');
   
   const onSubmit = (values: FormValues) => {
     setIsSubmitting(true);
@@ -162,6 +167,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
                       <SelectContent>
                         <SelectItem value="income">Pemasukan</SelectItem>
                         <SelectItem value="expense">Pengeluaran</SelectItem>
+                        {/* We can add transfer later if needed */}
+                        {/* <SelectItem value="transfer">Transfer</SelectItem> */}
                       </SelectContent>
                     </Select>
                     <FormMessage />

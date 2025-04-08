@@ -10,6 +10,7 @@ import {
   Report,
   Period
 } from '@/types';
+import { DbWallet, DbCategory, DbTransaction } from '@/utils/supabase-types';
 
 type FinanceContextType = {
   wallets: Wallet[];
@@ -95,7 +96,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
-        .order('name');
+        .order('name') as { data: DbCategory[] | null, error: any };
       
       if (categoriesError) throw categoriesError;
       
@@ -103,7 +104,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: walletsData, error: walletsError } = await supabase
         .from('wallets')
         .select('*')
-        .order('name');
+        .order('name') as { data: DbWallet[] | null, error: any };
       
       if (walletsError) throw walletsError;
       
@@ -111,12 +112,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
         .select('*')
-        .order('date', { ascending: false });
+        .order('date', { ascending: false }) as { data: DbTransaction[] | null, error: any };
       
       if (transactionsError) throw transactionsError;
       
       // Create a new wallet if none exist
-      if (walletsData.length === 0 && user) {
+      if (walletsData && walletsData.length === 0 && user) {
         const defaultWallet = {
           name: 'Tunai',
           balance: 0,
@@ -130,24 +131,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .from('wallets')
           .insert(defaultWallet)
           .select()
-          .single();
+          .single() as { data: DbWallet | null, error: any };
         
         if (newWalletError) throw newWalletError;
         
-        walletsData.push(newWallet);
+        if (newWallet) {
+          walletsData.push(newWallet);
+        }
       }
       
       // Convert from database format to app format
-      const categories = categoriesData.map(c => ({
+      const categories = categoriesData ? categoriesData.map(c => ({
         id: c.id,
         name: c.name,
         type: c.type,
         color: c.color,
         icon: c.icon,
         userId: c.user_id
-      }));
+      })) : [];
       
-      const wallets = walletsData.map(w => ({
+      const wallets = walletsData ? walletsData.map(w => ({
         id: w.id,
         name: w.name,
         balance: w.balance,
@@ -155,9 +158,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         color: w.color,
         icon: w.icon,
         userId: w.user_id
-      }));
+      })) : [];
       
-      const transactions = transactionsData.map(t => ({
+      const transactions = transactionsData ? transactionsData.map(t => ({
         id: t.id,
         description: t.description,
         amount: t.amount,
@@ -166,7 +169,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         categoryId: t.category_id,
         walletId: t.wallet_id,
         userId: t.user_id
-      }));
+      })) : [];
       
       setState({
         categories,
@@ -209,30 +212,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('wallets')
         .insert(newWalletData)
         .select()
-        .single();
+        .single() as { data: DbWallet | null, error: any };
       
       if (error) throw error;
       
-      const newWallet: Wallet = {
-        id: data.id,
-        name: data.name,
-        balance: data.balance,
-        currency: 'IDR',
-        color: data.color,
-        icon: data.icon,
-        userId: data.user_id
-      };
-      
-      setState(prev => ({
-        ...prev,
-        wallets: [...prev.wallets, newWallet],
-        currentWallet: prev.currentWallet || newWallet,
-      }));
-      
-      toast({
-        title: "Dompet ditambahkan",
-        description: `${walletData.name} telah ditambahkan ke dompet Anda`,
-      });
+      if (data) {
+        const newWallet: Wallet = {
+          id: data.id,
+          name: data.name,
+          balance: data.balance,
+          currency: 'IDR',
+          color: data.color,
+          icon: data.icon,
+          userId: data.user_id
+        };
+        
+        setState(prev => ({
+          ...prev,
+          wallets: [...prev.wallets, newWallet],
+          currentWallet: prev.currentWallet || newWallet,
+        }));
+        
+        toast({
+          title: "Dompet ditambahkan",
+          description: `${walletData.name} telah ditambahkan ke dompet Anda`,
+        });
+      }
     } catch (error) {
       console.error('Error adding wallet:', error);
       toast({
@@ -253,7 +258,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           color: wallet.color,
           icon: wallet.icon
         })
-        .eq('id', wallet.id);
+        .eq('id', wallet.id) as { error: any };
       
       if (error) throw error;
       
@@ -282,7 +287,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('wallets')
         .delete()
-        .eq('id', walletId);
+        .eq('id', walletId) as { error: any };
       
       if (error) throw error;
       
@@ -338,14 +343,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('transactions')
         .insert(newTransactionData)
         .select()
-        .single();
+        .single() as { data: DbTransaction | null, error: any };
       
       if (error) throw error;
       
       // Update wallet balance
       const walletToUpdate = state.wallets.find(w => w.id === transactionData.walletId);
       
-      if (walletToUpdate) {
+      if (walletToUpdate && data) {
         const balanceChange = 
           transactionData.type === 'income' ? transactionData.amount :
           transactionData.type === 'expense' ? -transactionData.amount : 0;
@@ -359,7 +364,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { error: walletError } = await supabase
           .from('wallets')
           .update({ balance: updatedWallet.balance })
-          .eq('id', updatedWallet.id);
+          .eq('id', updatedWallet.id) as { error: any };
         
         if (walletError) throw walletError;
         
@@ -424,7 +429,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           wallet_id: transaction.walletId,
           date: transaction.date
         })
-        .eq('id', transaction.id);
+        .eq('id', transaction.id) as { error: any };
       
       if (error) throw error;
       
@@ -510,7 +515,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('transactions')
         .delete()
-        .eq('id', transactionId);
+        .eq('id', transactionId) as { error: any };
       
       if (error) throw error;
       
@@ -527,7 +532,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { error: walletError } = await supabase
           .from('wallets')
           .update({ balance: updatedWallet.balance })
-          .eq('id', updatedWallet.id);
+          .eq('id', updatedWallet.id) as { error: any };
         
         if (walletError) throw walletError;
         
@@ -571,28 +576,30 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('categories')
         .insert(newCategoryData)
         .select()
-        .single();
+        .single() as { data: DbCategory | null, error: any };
       
       if (error) throw error;
       
-      const newCategory: Category = {
-        id: data.id,
-        name: data.name,
-        type: data.type,
-        color: data.color,
-        icon: data.icon,
-        userId: data.user_id
-      };
-      
-      setState(prev => ({
-        ...prev,
-        categories: [...prev.categories, newCategory],
-      }));
-      
-      toast({
-        title: "Kategori ditambahkan",
-        description: `${categoryData.name} telah ditambahkan ke kategori Anda`,
-      });
+      if (data) {
+        const newCategory: Category = {
+          id: data.id,
+          name: data.name,
+          type: data.type,
+          color: data.color,
+          icon: data.icon,
+          userId: data.user_id
+        };
+        
+        setState(prev => ({
+          ...prev,
+          categories: [...prev.categories, newCategory],
+        }));
+        
+        toast({
+          title: "Kategori ditambahkan",
+          description: `${categoryData.name} telah ditambahkan ke kategori Anda`,
+        });
+      }
     } catch (error) {
       console.error('Error adding category:', error);
       toast({
@@ -613,7 +620,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           color: category.color,
           icon: category.icon
         })
-        .eq('id', category.id);
+        .eq('id', category.id) as { error: any };
       
       if (error) throw error;
       
@@ -653,7 +660,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('categories')
         .delete()
-        .eq('id', categoryId);
+        .eq('id', categoryId) as { error: any };
       
       if (error) throw error;
       

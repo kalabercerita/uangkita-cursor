@@ -29,13 +29,19 @@ const Dashboard = () => {
   // Check if we have any transactions
   const hasTransactions = transactions.length > 0;
   
-  // Calculate total assets across all wallets
-  const totalAssets = useMemo(() => 
-    wallets.reduce((sum, wallet) => sum + wallet.balance, 0), 
-  [wallets]);
+  // Calculate the balance (total income - total expense)
+  const totalIncome = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+    
+  const totalExpense = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+    
+  const totalBalance = totalIncome - totalExpense;
   
-  // Calculate this month's income and expenses
-  const { totalIncome, totalExpense } = monthlyReport;
+  // Calculate this month's income and expenses from the report
+  const { totalIncome: monthlyIncome, totalExpense: monthlyExpense } = monthlyReport;
   
   // Prepare transaction history data for chart - last 7 days
   const last7Days = useMemo(() => {
@@ -112,9 +118,9 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="space-y-0">
-                  <CardDescription>Total Aset</CardDescription>
+                  <CardDescription>Saldo Saat Ini</CardDescription>
                   <CardTitle className="text-2xl font-bold">
-                    {formatRupiah(totalAssets)}
+                    {formatRupiah(totalBalance)}
                   </CardTitle>
                 </div>
                 <Wallet className="h-5 w-5 text-muted-foreground" />
@@ -131,7 +137,7 @@ const Dashboard = () => {
                 <div className="space-y-0">
                   <CardDescription>Pemasukan Bulan Ini</CardDescription>
                   <CardTitle className="text-2xl font-bold text-green-600">
-                    {formatRupiah(totalIncome)}
+                    {formatRupiah(monthlyIncome)}
                   </CardTitle>
                 </div>
                 <ArrowUpRight className="h-5 w-5 text-green-600" />
@@ -148,7 +154,7 @@ const Dashboard = () => {
                 <div className="space-y-0">
                   <CardDescription>Pengeluaran Bulan Ini</CardDescription>
                   <CardTitle className="text-2xl font-bold text-red-600">
-                    {formatRupiah(totalExpense)}
+                    {formatRupiah(monthlyExpense)}
                   </CardTitle>
                 </div>
                 <ArrowDownRight className="h-5 w-5 text-red-600" />

@@ -57,14 +57,16 @@ const Transactions = () => {
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [activeTab, setActiveTab] = useState('all');
   
   const { transactions, categories, wallets, deleteTransaction } = useFinance();
   
-  // Filter and sort transactions
+  // Filter and sort transactions based on the active tab and filters
   const filteredTransactions = transactions
     .filter(transaction => {
-      // Type filter
-      if (filterType !== 'all' && transaction.type !== filterType) return false;
+      // Tab filter
+      if (activeTab === 'income' && transaction.type !== 'income') return false;
+      if (activeTab === 'expense' && transaction.type !== 'expense') return false;
       
       // Category filter
       if (filterCategory && transaction.categoryId !== filterCategory) return false;
@@ -314,29 +316,6 @@ const Transactions = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 <Filter className="mr-2 h-4 w-4" />
-                {filterType === 'all' ? 'Semua Jenis' : 
-                 filterType === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>Filter berdasarkan Jenis</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setFilterType('all')}>
-                Semua Jenis
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterType('income')}>
-                Pemasukan
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterType('expense')}>
-                Pengeluaran
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
                 {filterCategory ? 
                   categories.find(c => c.id === filterCategory)?.name || 'Kategori' : 
                   'Kategori'
@@ -436,7 +415,7 @@ const Transactions = () => {
         </div>
       </div>
       
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue="all" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
@@ -451,7 +430,7 @@ const Transactions = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="income">
+        <TabsContent value="income" className="space-y-4">
           <Card>
             <CardContent className="p-6">
               {Object.keys(groupedTransactions).length > 0 ? 
@@ -464,7 +443,7 @@ const Transactions = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="expense">
+        <TabsContent value="expense" className="space-y-4">
           <Card>
             <CardContent className="p-6">
               {Object.keys(groupedTransactions).length > 0 ? 
@@ -521,8 +500,8 @@ const Transactions = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Floating Add Button */}
-      <div className="fixed bottom-20 right-8">
+      {/* Floating Add Button (moved to bottom right, slightly higher to avoid menu) */}
+      <div className="fixed bottom-24 right-6">
         <Button 
           size="lg" 
           className="rounded-full w-14 h-14 shadow-lg bg-finance-teal hover:bg-finance-teal/90 p-0"

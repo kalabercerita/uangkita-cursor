@@ -24,6 +24,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false, // Don't refetch on window focus for better performance
     },
   },
 });
@@ -34,7 +35,7 @@ const App = () => (
       <FinanceProvider>
         <TooltipProvider>
           <Toaster />
-          <Sonner />
+          <Sonner position="top-right" />
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />

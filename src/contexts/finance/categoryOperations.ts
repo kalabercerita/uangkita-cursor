@@ -1,4 +1,5 @@
 
+
 import { supabase } from "@/integrations/supabase/client";
 import { Category } from '@/types';
 import { DbCategory } from '@/utils/supabase-types';
@@ -138,3 +139,4 @@ export const deleteCategoryOperation = async (
     throw error;
   }
 };
+

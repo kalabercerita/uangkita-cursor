@@ -9,7 +9,129 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          color: string
+          created_at: string | null
+          icon: string
+          id: string
+          name: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          icon?: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          type: string
+          updated_at: string | null
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string | null
+          date?: string
+          description: string
+          id?: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          color: string
+          created_at: string | null
+          currency: string
+          icon: string
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          color?: string
+          created_at?: string | null
+          currency?: string
+          icon?: string
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          color?: string
+          created_at?: string | null
+          currency?: string
+          icon?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

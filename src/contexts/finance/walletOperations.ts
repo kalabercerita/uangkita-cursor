@@ -1,4 +1,5 @@
 
+
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet } from '@/types';
 import { DbWallet } from '@/utils/supabase-types';
@@ -141,3 +142,4 @@ export const deleteWalletOperation = async (walletId: string, showToast: ToastTy
     throw error;
   }
 };
+

@@ -29,7 +29,10 @@ const Dashboard = () => {
   // Check if we have any transactions
   const hasTransactions = transactions.length > 0;
   
-  // Calculate the balance (total income - total expense)
+  // Calculate total balance from all wallets
+  const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+  
+  // Calculate the income and expense totals
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -38,8 +41,6 @@ const Dashboard = () => {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
     
-  const totalBalance = totalIncome - totalExpense;
-  
   // Calculate this month's income and expenses from the report
   const { totalIncome: monthlyIncome, totalExpense: monthlyExpense } = monthlyReport;
   

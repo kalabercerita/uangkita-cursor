@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ type AppLayoutProps = {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const isMobile = useIsMobile();
 
   if (isLoading) {
     return (
@@ -28,8 +30,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto pb-10 px-4 md:px-6 bg-gray-50">
+        {!isMobile && <Header />}
+        <main className={`flex-1 overflow-y-auto pb-10 px-4 md:px-6 bg-gray-50 ${isMobile ? 'pt-4' : 'pt-16'}`}>
           {children}
         </main>
       </div>

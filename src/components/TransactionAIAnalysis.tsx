@@ -101,7 +101,9 @@ const generateAnalysis = (transactions: any[], categories: any[]) => {
   // Provide recommendations
   const recommendations = [];
 
+  // Fix: Ensure we're comparing numbers, not strings
   const topExpensePercentageNumber = parseFloat(topExpensePercentage.toString());
+  
   if (savingsRateNumber < 20) {
     recommendations.push("Tingkatkan tabungan Anda dengan menetapkan target tabungan minimal 20% dari pendapatan.");
   }

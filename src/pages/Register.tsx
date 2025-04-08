@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -32,7 +33,7 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Register = () => {
-  const { register, isLoading } = useAuth();
+  const { register: authRegister, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [authError, setAuthError] = useState('');
@@ -50,11 +51,45 @@ const Register = () => {
   const onSubmit = async (data: RegisterFormValues) => {
     try {
       setAuthError('');
-      await register(data.email, data.password, data.name);
-      navigate('/');
-    } catch (error) {
+      // First try with the Auth context method
+      try {
+        await authRegister(data.email, data.password, data.name);
+        navigate('/');
+        return;
+      } catch (authContextError) {
+        console.error('Auth context registration failed, trying direct Supabase:', authContextError);
+        
+        // If that fails, try directly with Supabase
+        const { data: userData, error: signUpError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            data: {
+              name: data.name
+            }
+          }
+        });
+
+        if (signUpError) throw signUpError;
+        
+        toast({
+          title: "Account created successfully",
+          description: "You can now log in with your credentials.",
+        });
+        
+        // Check if email confirmation is required
+        if (userData?.user && !userData.user.confirmed_at) {
+          toast({
+            title: "Email verification required",
+            description: "Please check your email to verify your account.",
+          });
+        } else {
+          navigate('/login');
+        }
+      }
+    } catch (error: any) {
       console.error('Registration error:', error);
-      setAuthError('Registration failed. Please try again.');
+      setAuthError(error.message || 'Registration failed. Please try again.');
     }
   };
 

@@ -1,7 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
   Search, 
   Filter, 
   ArrowUpDown, 
@@ -9,10 +8,11 @@ import {
   TrendingDown,
   Calendar,
   Edit,
-  Trash2
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   DropdownMenu,
@@ -25,7 +25,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -48,9 +47,9 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const Transactions = () => {
-  const { transactions, categories, wallets, deleteTransaction } = useFinance();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'amount_high' | 'amount_low'>('newest');
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
@@ -59,11 +58,16 @@ const Transactions = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
+  const { transactions, categories, wallets, deleteTransaction } = useFinance();
+  
   // Filter and sort transactions
   const filteredTransactions = transactions
     .filter(transaction => {
       // Type filter
       if (filterType !== 'all' && transaction.type !== filterType) return false;
+      
+      // Category filter
+      if (filterCategory && transaction.categoryId !== filterCategory) return false;
       
       // Date range filter
       if (dateRange?.from && dateRange?.to) {
@@ -118,6 +122,26 @@ const Transactions = () => {
     });
   };
 
+  // Group transactions by date
+  const groupTransactionsByDate = () => {
+    const grouped: { [date: string]: TransactionType[] } = {};
+    
+    filteredTransactions.forEach(transaction => {
+      const date = new Date(transaction.date);
+      const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      
+      grouped[dateKey].push(transaction);
+    });
+    
+    return grouped;
+  };
+
+  const groupedTransactions = groupTransactionsByDate();
+  
   const handleEditTransaction = (transaction: TransactionType) => {
     setTransactionToEdit(transaction);
     setIsEditTransactionOpen(true);
@@ -136,76 +160,142 @@ const Transactions = () => {
     }
   };
   
-  const renderTransactionRow = (transaction: TransactionType) => {
-    const category = categories.find(c => c.id === transaction.categoryId);
-    const wallet = wallets.find(w => w.id === transaction.walletId);
-    
-    return (
-      <div key={transaction.id} className="grid grid-cols-7 p-4 hover:bg-muted/20 transition-colors">
-        <div className="col-span-2 flex items-center space-x-3">
-          <div className={`p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}`}>
-            {transaction.type === 'income' ? (
-              <TrendingUp className="h-4 w-4 text-finance-green" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-finance-red" />
-            )}
-          </div>
-          <div>
-            <p className="font-medium">{transaction.description}</p>
-          </div>
-        </div>
-        <div className="self-center">
-          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
-            {category?.name || 'Uncategorized'}
-          </span>
-        </div>
-        <div className="self-center text-muted-foreground">
-          {formatDate(transaction.date)}
-        </div>
-        <div className="self-center">
-          {wallet?.name || 'Unknown'}
-        </div>
-        <div className={`self-center font-medium ${transaction.type === 'income' ? 'text-finance-green' : 'text-finance-red'}`}>
-          {transaction.type === 'income' ? '+' : '-'} 
-          {formatCurrency(transaction.amount)}
-        </div>
-        <div className="self-center flex space-x-2 justify-end">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => handleEditTransaction(transaction)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => handleDeleteTransaction(transaction.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+  // Get today and yesterday dates for display
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  
+  // Get day name (Hari ini, Kemarin, or date)
+  const getDayName = (dateKey: string) => {
+    if (dateKey === today) {
+      return 'Hari ini';
+    } else if (dateKey === yesterday) {
+      return 'Kemarin';
+    } else {
+      const date = new Date(dateKey);
+      // Format: "Senin", "Selasa", etc.
+      return date.toLocaleDateString('id-ID', { weekday: 'long' });
+    }
+  };
+  
+  // Function to get the total amount for a day
+  const getDailyTotal = (transactions: TransactionType[]) => {
+    const income = transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    const expense = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    return income - expense;
+  };
+  
+  // Render transactions grouped by date
+  const renderTransactionsByDate = () => {
+    const dateKeys = Object.keys(groupedTransactions).sort((a, b) => 
+      new Date(b).getTime() - new Date(a).getTime()
     );
+    
+    if (dateKeys.length === 0) {
+      return (
+        <div className="py-8 text-center">
+          <p className="text-muted-foreground">No transactions found. Add some transactions to get started!</p>
+        </div>
+      );
+    }
+    
+    return dateKeys.map(dateKey => {
+      const transactions = groupedTransactions[dateKey];
+      const dayName = getDayName(dateKey);
+      const date = new Date(dateKey);
+      const dailyTotal = getDailyTotal(transactions);
+      
+      return (
+        <div key={dateKey} className="mb-6">
+          <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-2">
+            <div className="flex justify-between items-center">
+              <div className="flex space-x-4 items-center">
+                <div className="text-3xl font-bold">
+                  {date.getDate()}
+                </div>
+                <div>
+                  <div className="font-semibold">{dayName}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+              <div className={`font-semibold ${dailyTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {dailyTotal >= 0 ? '+' : ''}{formatCurrency(dailyTotal)}
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            {transactions.map(transaction => {
+              const category = categories.find(c => c.id === transaction.categoryId);
+              const wallet = wallets.find(w => w.id === transaction.walletId);
+              
+              return (
+                <div 
+                  key={transaction.id} 
+                  className="bg-white dark:bg-gray-900 border rounded-lg p-3 flex justify-between items-center"
+                >
+                  <div className="flex space-x-3 items-center">
+                    <div className={`p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}`}>
+                      {transaction.type === 'income' ? (
+                        <TrendingUp className="h-5 w-5 text-finance-green" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5 text-finance-red" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium">{transaction.description}</div>
+                      <div className="text-sm text-muted-foreground flex items-center space-x-2">
+                        <span>{category?.name || 'Uncategorized'}</span>
+                        <span>•</span>
+                        <span>{wallet?.name || 'Unknown'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className={`font-medium ${transaction.type === 'income' ? 'text-finance-green' : 'text-finance-red'}`}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </div>
+                    <div className="flex space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditTransaction(transaction)}
+                        className="h-8 w-8"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDeleteTransaction(transaction.id)}
+                        className="h-8 w-8"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    });
   };
   
   return (
-    <div className="space-y-6 py-6 animate-fade-in">
+    <div className="space-y-6 py-6 animate-fade-in relative">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 className="text-3xl font-bold tracking-tight">
           Transaksi
         </h2>
-        <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-finance-teal to-finance-purple hover:from-finance-teal/90 hover:to-finance-purple/90">
-              <Plus className="mr-2 h-4 w-4" /> 
-              Tambah Transaksi
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <TransactionForm onSuccess={() => setIsAddTransactionOpen(false)} />
-          </DialogContent>
-        </Dialog>
       </div>
       
       <div className="flex flex-col md:flex-row gap-4">
@@ -219,7 +309,7 @@ const Transactions = () => {
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -240,6 +330,51 @@ const Transactions = () => {
               <DropdownMenuItem onClick={() => setFilterType('expense')}>
                 Pengeluaran
               </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                {filterCategory ? 
+                  categories.find(c => c.id === filterCategory)?.name || 'Kategori' : 
+                  'Kategori'
+                }
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Filter berdasarkan Kategori</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setFilterCategory(null)}>
+                Semua Kategori
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Pemasukan</DropdownMenuLabel>
+              {categories
+                .filter(c => c.type === 'income')
+                .map(category => (
+                  <DropdownMenuItem 
+                    key={category.id} 
+                    onClick={() => setFilterCategory(category.id)}
+                  >
+                    {category.name}
+                  </DropdownMenuItem>
+                ))
+              }
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Pengeluaran</DropdownMenuLabel>
+              {categories
+                .filter(c => c.type === 'expense')
+                .map(category => (
+                  <DropdownMenuItem 
+                    key={category.id} 
+                    onClick={() => setFilterCategory(category.id)}
+                  >
+                    {category.name}
+                  </DropdownMenuItem>
+                ))
+              }
             </DropdownMenuContent>
           </DropdownMenu>
           
@@ -282,7 +417,7 @@ const Transactions = () => {
                     format(dateRange.from, "dd/MM/yy")
                   )
                 ) : (
-                  "Rentang Tanggal"
+                  "Pilih Tanggal"
                 )}
               </Button>
             </PopoverTrigger>
@@ -310,86 +445,45 @@ const Transactions = () => {
         
         <TabsContent value="all" className="space-y-4">
           <Card>
-            <CardContent className="p-0">
-              <div className="rounded-md border">
-                <div className="grid grid-cols-7 bg-muted/50 p-4 font-medium">
-                  <div className="col-span-2">Description</div>
-                  <div>Category</div>
-                  <div>Date</div>
-                  <div>Wallet</div>
-                  <div>Amount</div>
-                  <div className="text-right">Actions</div>
-                </div>
-                <div className="divide-y">
-                  {filteredTransactions.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No transactions found.
-                    </div>
-                  ) : (
-                    filteredTransactions.map(transaction => renderTransactionRow(transaction))
-                  )}
-                </div>
-              </div>
+            <CardContent className="p-6">
+              {renderTransactionsByDate()}
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="income">
           <Card>
-            <CardContent className="p-0">
-              <div className="rounded-md border">
-                <div className="grid grid-cols-7 bg-muted/50 p-4 font-medium">
-                  <div className="col-span-2">Description</div>
-                  <div>Category</div>
-                  <div>Date</div>
-                  <div>Wallet</div>
-                  <div>Amount</div>
-                  <div className="text-right">Actions</div>
+            <CardContent className="p-6">
+              {Object.keys(groupedTransactions).length > 0 ? 
+                renderTransactionsByDate() : 
+                <div className="py-8 text-center">
+                  <p className="text-muted-foreground">No income transactions found.</p>
                 </div>
-                <div className="divide-y">
-                  {filteredTransactions.filter(t => t.type === 'income').length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No income transactions found.
-                    </div>
-                  ) : (
-                    filteredTransactions
-                      .filter(t => t.type === 'income')
-                      .map(transaction => renderTransactionRow(transaction))
-                  )}
-                </div>
-              </div>
+              }
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="expense">
           <Card>
-            <CardContent className="p-0">
-              <div className="rounded-md border">
-                <div className="grid grid-cols-7 bg-muted/50 p-4 font-medium">
-                  <div className="col-span-2">Description</div>
-                  <div>Category</div>
-                  <div>Date</div>
-                  <div>Wallet</div>
-                  <div>Amount</div>
-                  <div className="text-right">Actions</div>
+            <CardContent className="p-6">
+              {Object.keys(groupedTransactions).length > 0 ? 
+                renderTransactionsByDate() : 
+                <div className="py-8 text-center">
+                  <p className="text-muted-foreground">No expense transactions found.</p>
                 </div>
-                <div className="divide-y">
-                  {filteredTransactions.filter(t => t.type === 'expense').length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No expense transactions found.
-                    </div>
-                  ) : (
-                    filteredTransactions
-                      .filter(t => t.type === 'expense')
-                      .map(transaction => renderTransactionRow(transaction))
-                  )}
-                </div>
-              </div>
+              }
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Floating Add Transaction Button */}
+      <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <TransactionForm onSuccess={() => setIsAddTransactionOpen(false)} />
+        </DialogContent>
+      </Dialog>
       
       {/* Edit Transaction Dialog */}
       <Dialog open={isEditTransactionOpen} onOpenChange={setIsEditTransactionOpen}>
@@ -426,6 +520,17 @@ const Transactions = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Floating Add Button */}
+      <div className="fixed bottom-20 right-8">
+        <Button 
+          size="lg" 
+          className="rounded-full w-14 h-14 shadow-lg bg-finance-teal hover:bg-finance-teal/90 p-0"
+          onClick={() => setIsAddTransactionOpen(true)}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      </div>
     </div>
   );
 };

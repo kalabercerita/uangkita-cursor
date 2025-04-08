@@ -17,6 +17,7 @@ import WalletDetail from "./pages/WalletDetail";
 import Profile from "./pages/Profile";
 import CurrencyConverter from "./components/CurrencyConverter";
 import Wallets from "./pages/Wallets";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,7 +45,7 @@ const App = () => (
               <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
               <Route path="/wallets" element={<AppLayout><Wallets /></AppLayout>} />
               <Route path="/wallet/:walletId" element={<AppLayout><WalletDetail /></AppLayout>} />
-              <Route path="/settings" element={<AppLayout><Dashboard /></AppLayout>} />
+              <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
               <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
               <Route path="/currency-converter" element={<AppLayout><CurrencyConverter /></AppLayout>} />
 

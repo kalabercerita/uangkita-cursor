@@ -12,6 +12,7 @@ import {
   Period
 } from '@/types';
 import { DbWallet, DbCategory, DbTransaction } from '@/utils/supabase-types';
+import { Database } from "@/integrations/supabase/types";
 
 type FinanceContextType = {
   wallets: Wallet[];
@@ -97,7 +98,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
-        .order('name');
+        .order('name') as { data: DbCategory[] | null; error: any };
       
       if (categoriesError) throw categoriesError;
       
@@ -105,7 +106,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: walletsData, error: walletsError } = await supabase
         .from('wallets')
         .select('*')
-        .order('name');
+        .order('name') as { data: DbWallet[] | null; error: any };
       
       if (walletsError) throw walletsError;
       
@@ -113,7 +114,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
         .select('*')
-        .order('date', { ascending: false });
+        .order('date', { ascending: false }) as { data: DbTransaction[] | null; error: any };
       
       if (transactionsError) throw transactionsError;
       
@@ -132,7 +133,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .from('wallets')
           .insert(defaultWallet)
           .select()
-          .single();
+          .single() as { data: DbWallet | null; error: any };
         
         if (newWalletError) throw newWalletError;
         
@@ -213,7 +214,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('wallets')
         .insert(newWalletData)
         .select()
-        .single();
+        .single() as { data: DbWallet | null; error: any };
       
       if (error) throw error;
       
@@ -259,7 +260,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           color: wallet.color,
           icon: wallet.icon
         })
-        .eq('id', wallet.id);
+        .eq('id', wallet.id) as { error: any };
       
       if (error) throw error;
       
@@ -288,7 +289,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('wallets')
         .delete()
-        .eq('id', walletId);
+        .eq('id', walletId) as { error: any };
       
       if (error) throw error;
       
@@ -344,7 +345,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('transactions')
         .insert(newTransactionData)
         .select()
-        .single();
+        .single() as { data: DbTransaction | null; error: any };
       
       if (error) throw error;
       
@@ -365,7 +366,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { error: walletError } = await supabase
           .from('wallets')
           .update({ balance: updatedWallet.balance })
-          .eq('id', updatedWallet.id);
+          .eq('id', updatedWallet.id) as { error: any };
         
         if (walletError) throw walletError;
         
@@ -430,7 +431,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           wallet_id: transaction.walletId,
           date: transaction.date
         })
-        .eq('id', transaction.id);
+        .eq('id', transaction.id) as { error: any };
       
       if (error) throw error;
       
@@ -449,7 +450,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await supabase
           .from('wallets')
           .update({ balance: updatedWallets[originalWalletIndex].balance })
-          .eq('id', updatedWallets[originalWalletIndex].id);
+          .eq('id', updatedWallets[originalWalletIndex].id) as { error: any };
       }
       
       // Add effect to new wallet (if different)
@@ -465,7 +466,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           await supabase
             .from('wallets')
             .update({ balance: updatedWallets[newWalletIndex].balance })
-            .eq('id', updatedWallets[newWalletIndex].id);
+            .eq('id', updatedWallets[newWalletIndex].id) as { error: any };
         }
       } else if (originalWalletIndex >= 0) {
         // Same wallet, but need to apply the new effect
@@ -516,7 +517,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('transactions')
         .delete()
-        .eq('id', transactionId);
+        .eq('id', transactionId) as { error: any };
       
       if (error) throw error;
       
@@ -533,7 +534,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { error: walletError } = await supabase
           .from('wallets')
           .update({ balance: updatedWallet.balance })
-          .eq('id', updatedWallet.id);
+          .eq('id', updatedWallet.id) as { error: any };
         
         if (walletError) throw walletError;
         
@@ -577,7 +578,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('categories')
         .insert(newCategoryData)
         .select()
-        .single();
+        .single() as { data: DbCategory | null; error: any };
       
       if (error) throw error;
       
@@ -621,7 +622,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           color: category.color,
           icon: category.icon
         })
-        .eq('id', category.id);
+        .eq('id', category.id) as { error: any };
       
       if (error) throw error;
       
@@ -661,7 +662,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('categories')
         .delete()
-        .eq('id', categoryId);
+        .eq('id', categoryId) as { error: any };
       
       if (error) throw error;
       

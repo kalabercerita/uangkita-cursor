@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { User } from '@/types';
@@ -42,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up the auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
+        console.log('Auth state changed:', event, newSession);
         setSession(newSession);
         setUser(newSession?.user ? {
           id: newSession.user.id,
@@ -88,12 +88,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        // Specifically handle email confirmation error
+        if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Konfirmasi email diperlukan",
+            description: "Silakan cek email Anda untuk tautan konfirmasi",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Login gagal",
+            description: "Email atau password tidak valid",
+            variant: "destructive",
+          });
+        }
+        throw error;
+      }
+      
+      if (!data.session) {
+        toast({
+          title: "Login gagal",
+          description: "Silakan cek email untuk konfirmasi akun",
+          variant: "default",
+        });
+        throw new Error('Email not confirmed');
+      }
       
       toast({
         title: "Login berhasil",
@@ -102,11 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (error) {
       console.error('Login error:', error);
-      toast({
-        title: "Login gagal",
-        description: "Email atau password tidak valid",
-        variant: "destructive",
-      });
       throw error;
     } finally {
       setIsLoading(false);

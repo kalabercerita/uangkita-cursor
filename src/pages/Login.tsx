@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Define form schema
 const formSchema = z.object({
@@ -30,6 +32,7 @@ const Login = () => {
   const { login, loginWithGoogle, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -43,8 +46,14 @@ const Login = () => {
     try {
       setIsSubmitting(true);
       await login(data.email, data.password);
-    } catch (error) {
+      // If we got here without error but not redirected, 
+      // it might be because the email confirmation is pending
+      setEmailSent(true);
+    } catch (error: any) {
       console.error('Login error:', error);
+      if (error?.message?.includes('Email not confirmed')) {
+        setEmailSent(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -76,6 +85,17 @@ const Login = () => {
           <CardDescription>Masuk ke akun Anda</CardDescription>
         </CardHeader>
         <CardContent>
+          {emailSent && (
+            <Alert className="mb-4 bg-amber-50 text-amber-800 border-amber-200">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Konfirmasi Email Diperlukan</AlertTitle>
+              <AlertDescription>
+                Kami telah mengirimkan email konfirmasi ke alamat email Anda. 
+                Silakan cek inbox atau folder spam dan klik link konfirmasi untuk menyelesaikan proses login.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField

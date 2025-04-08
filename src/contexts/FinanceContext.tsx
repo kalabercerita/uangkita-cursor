@@ -330,13 +330,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!user) return;
     
     try {
+      // Convert Date object to ISO string if it's a Date
+      const formattedDate = transactionData.date instanceof Date 
+        ? transactionData.date.toISOString() 
+        : transactionData.date;
+      
       const newTransactionData = {
         description: transactionData.description,
         amount: transactionData.amount,
         type: transactionData.type,
         category_id: transactionData.categoryId,
         wallet_id: transactionData.walletId,
-        date: transactionData.date,
+        date: formattedDate,
         user_id: user.id,
       };
       
@@ -420,6 +425,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         transaction.type === 'income' ? transaction.amount :
         transaction.type === 'expense' ? -transaction.amount : 0;
       
+      // Convert Date object to ISO string if it's a Date
+      const formattedDate = transaction.date instanceof Date 
+        ? transaction.date.toISOString() 
+        : transaction.date;
+      
       // Update transaction in database
       const { error } = await supabase
         .from('transactions')
@@ -429,7 +439,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           type: transaction.type,
           category_id: transaction.categoryId,
           wallet_id: transaction.walletId,
-          date: transaction.date
+          date: formattedDate
         })
         .eq('id', transaction.id) as { error: any };
       

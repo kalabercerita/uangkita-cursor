@@ -1,68 +1,99 @@
 
-import React, { useState } from 'react';
-import { 
-  Calendar,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  ArrowUpRight,
-  ArrowDownRight,
-  Plus,
-  CreditCard
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinance } from '@/contexts/FinanceContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Period } from '@/types';
+import { ArrowUpRight, ArrowDownRight, Wallet, BarChart4, CalendarDays } from 'lucide-react';
 import { 
-  ResponsiveContainer, 
+  LineChart, 
+  Line, 
   BarChart, 
   Bar, 
   XAxis, 
   YAxis, 
-  CartesianGrid, 
-  Tooltip,
+  Tooltip, 
+  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-  Legend,
-  LineChart,
-  Line
+  Legend
 } from 'recharts';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import TransactionForm from '@/components/TransactionForm';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import TransactionAIAnalysis from '@/components/TransactionAIAnalysis';
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const { wallets, transactions, categories, getReport } = useFinance();
-  const [period, setPeriod] = useState<Period>('monthly');
-  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
-  const report = getReport(period);
+  // Get monthly report
+  const monthlyReport = getReport('monthly');
   
-  const categoryData = report.categorySummary;
+  // Check if we have any transactions
+  const hasTransactions = transactions.length > 0;
   
-  // Mock data for line chart (in a real app this would be calculated from transactions)
-  const trendData = [
-    { name: 'Jan', income: 4000, expense: 2400 },
-    { name: 'Feb', income: 3000, expense: 1398 },
-    { name: 'Mar', income: 2000, expense: 9800 },
-    { name: 'Apr', income: 2780, expense: 3908 },
-    { name: 'May', income: 1890, expense: 4800 },
-    { name: 'Jun', income: 2390, expense: 3800 },
-    { name: 'Jul', income: 3490, expense: 4300 },
-  ];
+  // Calculate total assets across all wallets
+  const totalAssets = useMemo(() => 
+    wallets.reduce((sum, wallet) => sum + wallet.balance, 0), 
+  [wallets]);
   
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+  // Calculate this month's income and expenses
+  const { totalIncome, totalExpense } = monthlyReport;
   
-  const formatCurrency = (value: number) => {
+  // Prepare transaction history data for chart - last 7 days
+  const last7Days = useMemo(() => {
+    const result = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      
+      // Format date as string for display
+      const dateStr = date.toLocaleDateString('id-ID', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      
+      // Filter transactions for this date
+      const dayTransactions = transactions.filter(t => {
+        const transDate = new Date(t.date);
+        return transDate.getDate() === date.getDate() && 
+               transDate.getMonth() === date.getMonth() && 
+               transDate.getFullYear() === date.getFullYear();
+      });
+      
+      // Calculate income and expense for this day
+      const income = dayTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expense = dayTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      result.push({ 
+        name: dateStr, 
+        income, 
+        expense,
+        balance: income - expense
+      });
+    }
+    
+    return result;
+  }, [transactions]);
+  
+  // Prepare category data for pie chart
+  const categoryData = useMemo(() => {
+    return monthlyReport.categorySummary.map(cat => ({
+      name: cat.categoryName,
+      value: Math.abs(cat.amount),
+      type: cat.amount > 0 ? 'income' : 'expense'
+    }));
+  }, [monthlyReport]);
+  
+  // Colors for pie chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+  
+  // Format number as Indonesian Rupiah
+  const formatRupiah = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -70,157 +101,124 @@ const Dashboard = () => {
       maximumFractionDigits: 0
     }).format(value);
   };
-
-  const latestTransactions = transactions
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
   
   return (
-    <div className="space-y-6 py-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Selamat datang kembali, {user?.name || 'Pengguna'}
-        </h2>
-        <div className="flex items-center space-x-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <Calendar className="mr-2 h-4 w-4" /> 
-                Pilih Tanggal
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <CalendarComponent
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                initialFocus
-                className="pointer-events-auto p-3"
-              />
-            </PopoverContent>
-          </Popover>
-          
-          <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> 
-                Tambah Transaksi
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <TransactionForm onSuccess={() => setIsAddTransactionOpen(false)} />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="animate-slide-up">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Balance
-            </CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(wallets.reduce((sum, wallet) => sum + wallet.balance, 0))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across {wallets.length} wallet{wallets.length !== 1 ? 's' : ''}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Income
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-finance-green" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-finance-green">
-              {formatCurrency(report.totalIncome)}
-            </div>
-            <div className="flex items-center text-xs text-finance-green">
-              <ArrowUpRight className="mr-1 h-4 w-4" />
-              <span>+12.5% from last {period}</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Expenses
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-finance-red" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-finance-red">
-              {formatCurrency(report.totalExpense)}
-            </div>
-            <div className="flex items-center text-xs text-finance-red">
-              <ArrowDownRight className="mr-1 h-4 w-4" />
-              <span>-4.3% from last {period}</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Savings Rate
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {report.totalIncome > 0 
-                ? `${Math.round(((report.totalIncome - report.totalExpense) / report.totalIncome) * 100)}%` 
-                : '0%'}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {report.totalIncome > report.totalExpense ? 'Good job!' : 'Spending exceeds income'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Income vs Expenses</CardTitle>
-                <CardDescription>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => setPeriod('daily')} className={period === 'daily' ? 'bg-finance-teal text-white' : ''}>
-                      Day
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPeriod('weekly')} className={period === 'weekly' ? 'bg-finance-teal text-white' : ''}>
-                      Week
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPeriod('monthly')} className={period === 'monthly' ? 'bg-finance-teal text-white' : ''}>
-                      Month
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPeriod('yearly')} className={period === 'yearly' ? 'bg-finance-teal text-white' : ''}>
-                      Year
-                    </Button>
-                  </div>
-                </CardDescription>
+      {hasTransactions ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="space-y-0">
+                  <CardDescription>Total Aset</CardDescription>
+                  <CardTitle className="text-2xl font-bold">
+                    {formatRupiah(totalAssets)}
+                  </CardTitle>
+                </div>
+                <Wallet className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="h-80">
+              <CardContent>
+                <div className="text-xs text-muted-foreground">
+                  Dari {wallets.length} dompet
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="space-y-0">
+                  <CardDescription>Pemasukan Bulan Ini</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-green-600">
+                    {formatRupiah(totalIncome)}
+                  </CardTitle>
+                </div>
+                <ArrowUpRight className="h-5 w-5 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground">
+                  {transactions.filter(t => t.type === 'income').length} transaksi pemasukan
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="space-y-0">
+                  <CardDescription>Pengeluaran Bulan Ini</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-red-600">
+                    {formatRupiah(totalExpense)}
+                  </CardTitle>
+                </div>
+                <ArrowDownRight className="h-5 w-5 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground">
+                  {transactions.filter(t => t.type === 'expense').length} transaksi pengeluaran
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="col-span-1">
+              <CardHeader>
+                <CardTitle className="text-xl">Analisis Transaksi</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px] overflow-y-auto">
+                <TransactionAIAnalysis />
+              </CardContent>
+            </Card>
+            
+            <Card className="col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl">Kategori Pengeluaran</CardTitle>
+                <BarChart4 className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  {categoryData.filter(cat => cat.type === 'expense').length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData.filter(cat => cat.type === 'expense')}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {categoryData.filter(cat => cat.type === 'expense').map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Legend />
+                        <Tooltip formatter={(value) => formatRupiah(Number(value))} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <p className="text-muted-foreground">Tidak ada data pengeluaran</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl">Aliran Kas 7 Hari Terakhir</CardTitle>
+              <CalendarDays className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={trendData}
+                    data={last7Days}
                     margin={{
                       top: 5,
                       right: 30,
@@ -228,182 +226,38 @@ const Dashboard = () => {
                       bottom: 5,
                     }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <YAxis tickFormatter={(value) => formatRupiah(value).split(',')[0]} />
+                    <Tooltip formatter={(value) => formatRupiah(Number(value))} />
                     <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="income" 
-                      stroke="#48BB78" 
-                      strokeWidth={2}
-                      activeDot={{ r: 8 }} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="expense" 
-                      stroke="#F56565" 
-                      strokeWidth={2} 
-                    />
+                    <Line type="monotone" dataKey="income" stroke="#10b981" name="Pemasukan" strokeWidth={2} />
+                    <Line type="monotone" dataKey="expense" stroke="#ef4444" name="Pengeluaran" strokeWidth={2} />
+                    <Line type="monotone" dataKey="balance" stroke="#3b82f6" name="Saldo" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Expense Breakdown</CardTitle>
-                <CardDescription>
-                  Top spending categories for this {period}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryData.filter(cat => cat.amount < 0).map(cat => ({
-                        name: cat.categoryName,
-                        value: Math.abs(cat.amount)
-                      }))}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>
-                  Your latest 5 transactions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {latestTransactions.length === 0 ? (
-                    <div className="text-center p-4">
-                      <p className="text-muted-foreground">No transactions yet</p>
-                      <Button className="mt-2" size="sm">
-                        <Plus className="mr-2 h-4 w-4" /> 
-                        Add Transaction
-                      </Button>
-                    </div>
-                  ) : (
-                    latestTransactions.map(transaction => {
-                      const category = categories.find(c => c.id === transaction.categoryId);
-                      const wallet = wallets.find(w => w.id === transaction.walletId);
-                      
-                      return (
-                        <div key={transaction.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md">
-                          <div className="flex items-center space-x-3">
-                            <div className="p-2 rounded-full bg-gray-100">
-                              {transaction.type === 'income' ? (
-                                <TrendingUp className="h-4 w-4 text-finance-green" />
-                              ) : (
-                                <TrendingDown className="h-4 w-4 text-finance-red" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium">{transaction.description}</p>
-                              <div className="flex items-center text-xs text-muted-foreground">
-                                <span className="mr-2">{category?.name || 'Uncategorized'}</span>
-                                <span>•</span>
-                                <span className="ml-2">{wallet?.name || 'Unknown wallet'}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className={transaction.type === 'income' ? 'text-finance-green font-medium' : 'text-finance-red font-medium'}>
-                            {transaction.type === 'income' ? '+' : '-'} 
-                            {formatCurrency(transaction.amount)}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>My Wallets</CardTitle>
-                <CardDescription>Your wallet balances</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {wallets.map(wallet => (
-                    <div key={wallet.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 rounded-full bg-gray-100">
-                          <CreditCard className="h-4 w-4 text-finance-teal" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{wallet.name}</p>
-                          <p className="text-xs text-muted-foreground">{wallet.currency}</p>
-                        </div>
-                      </div>
-                      <div className="font-medium">
-                        {formatCurrency(wallet.balance)}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <Button className="w-full" variant="outline">
-                    <Plus className="mr-2 h-4 w-4" /> 
-                    Add New Wallet
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="transactions" className="space-y-4">
-          {/* Transactions tab content - would be expanded in a real app */}
-          <Card>
-            <CardHeader>
-              <CardTitle>All Transactions</CardTitle>
-              <CardDescription>
-                View and manage your transactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>This section would contain a full transaction list with filters and search.</p>
+              </div>
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="analytics" className="space-y-4">
-          {/* Analytics tab content - would be expanded in a real app */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics</CardTitle>
-              <CardDescription>
-                Detailed financial analytics
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>This section would contain more detailed charts and reports.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Selamat Datang di UangKita</CardTitle>
+            <CardDescription>
+              Belum ada data transaksi. Mulai tambahkan transaksi untuk melihat analisis keuangan Anda.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="py-8 text-center">
+              <Wallet className="mx-auto h-12 w-12 text-finance-teal opacity-50" />
+              <h3 className="mt-4 text-lg font-medium">Belum Ada Transaksi</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Tambahkan transaksi pemasukan dan pengeluaran untuk melihat analisis keuangan Anda di dashboard ini.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

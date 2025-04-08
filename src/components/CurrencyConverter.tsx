@@ -10,7 +10,7 @@ import {
   SelectTrigger, 
   SelectValue
 } from '@/components/ui/select';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 type Currency = 'IDR' | 'USD' | 'EUR' | 'JPY' | 'SGD' | 'MYR';
@@ -27,54 +27,61 @@ const CurrencyConverter = () => {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { toast } = useToast();
 
   // Fetch latest exchange rates
-  useEffect(() => {
-    const fetchExchangeRates = async () => {
-      try {
-        setLoading(true);
-        
-        // In a real app, you would use a key from environment variables
-        // Using a free API that doesn't require authentication for this example
-        const response = await fetch('https://open.er-api.com/v6/latest/USD');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch exchange rates');
-        }
-        
-        const data = await response.json();
-        
-        // Ensure we have all currencies we want to use
-        const rates: ExchangeRates = {
-          USD: 1, // Base currency in the API
-          IDR: data.rates.IDR || 15000,
-          EUR: data.rates.EUR || 0.9,
-          JPY: data.rates.JPY || 110,
-          SGD: data.rates.SGD || 1.35,
-          MYR: data.rates.MYR || 4.2
-        };
-        
-        setExchangeRates(rates);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching exchange rates:', err);
-        setError('Failed to load exchange rates. Using fallback rates.');
-        
-        // Fallback rates in case the API fails
-        setExchangeRates({
-          USD: 1,
-          IDR: 15000,
-          EUR: 0.9,
-          JPY: 110,
-          SGD: 1.35,
-          MYR: 4.2
-        });
-      } finally {
-        setLoading(false);
+  const fetchExchangeRates = async () => {
+    try {
+      setLoading(true);
+      
+      // Using a free API that doesn't require authentication
+      const response = await fetch('https://open.er-api.com/v6/latest/USD');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch exchange rates');
       }
-    };
+      
+      const data = await response.json();
+      
+      // Ensure we have all currencies we want to use
+      const rates: ExchangeRates = {
+        USD: 1, // Base currency in the API
+        IDR: data.rates.IDR || 15000,
+        EUR: data.rates.EUR || 0.9,
+        JPY: data.rates.JPY || 110,
+        SGD: data.rates.SGD || 1.35,
+        MYR: data.rates.MYR || 4.2
+      };
+      
+      setExchangeRates(rates);
+      setLastUpdated(new Date());
+      setError(null);
+      
+      toast({
+        title: "Kurs Mata Uang Diperbarui",
+        description: "Data kurs mata uang telah diperbarui",
+      });
+    } catch (err) {
+      console.error('Error fetching exchange rates:', err);
+      setError('Failed to load exchange rates. Using fallback rates.');
+      
+      // Fallback rates in case the API fails
+      setExchangeRates({
+        USD: 1,
+        IDR: 15000,
+        EUR: 0.9,
+        JPY: 110,
+        SGD: 1.35,
+        MYR: 4.2
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Fetch exchange rates on load and every hour
+  useEffect(() => {
     fetchExchangeRates();
     
     // Refresh exchange rates every hour
@@ -134,11 +141,24 @@ const CurrencyConverter = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Konversi Mata Uang</CardTitle>
-        <CardDescription>
-          Konversi antar mata uang dengan kurs terkini
-          {loading ? ' (Mengambil data kurs terbaru...)' : ''}
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Konversi Mata Uang</CardTitle>
+            <CardDescription>
+              Konversi antar mata uang dengan kurs terkini
+              {loading ? ' (Mengambil data kurs terbaru...)' : ''}
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={fetchExchangeRates}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh Rates</span>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -212,7 +232,9 @@ const CurrencyConverter = () => {
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Data kurs diperbarui secara berkala
+                {lastUpdated 
+                  ? `Data kurs diperbarui pada ${lastUpdated.toLocaleString('id-ID')}` 
+                  : 'Data kurs diperbarui secara berkala'}
               </p>
             </div>
           )}

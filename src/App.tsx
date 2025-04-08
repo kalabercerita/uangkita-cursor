@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import WalletDetail from "./pages/WalletDetail";
 import Profile from "./pages/Profile";
 import CurrencyConverter from "./components/CurrencyConverter";
+import Wallets from "./pages/Wallets";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,7 +42,7 @@ const App = () => (
               <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
               <Route path="/transactions" element={<AppLayout><Transactions /></AppLayout>} />
               <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
-              <Route path="/wallets" element={<AppLayout><Dashboard /></AppLayout>} />
+              <Route path="/wallets" element={<AppLayout><Wallets /></AppLayout>} />
               <Route path="/wallet/:walletId" element={<AppLayout><WalletDetail /></AppLayout>} />
               <Route path="/settings" element={<AppLayout><Dashboard /></AppLayout>} />
               <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />

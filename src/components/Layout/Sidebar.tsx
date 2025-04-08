@@ -4,10 +4,10 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Home,
   Wallet,
+  CreditCard,
   BarChart4,
   ListTodo,
   Settings,
-  CreditCard,
   Bell,
   User,
   Menu,

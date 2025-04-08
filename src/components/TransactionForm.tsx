@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFinance } from '@/contexts/FinanceContext';
 import { cn } from '@/lib/utils';
+import { Transaction } from '@/types';
 
 const formSchema = z.object({
   description: z.string().min(2, { message: 'Deskripsi diperlukan' }),
@@ -47,23 +49,40 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface TransactionFormProps {
   walletId?: string;
+  transaction?: Transaction;
   onSuccess?: () => void;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }) => {
-  const { categories, wallets, addTransaction } = useFinance();
+const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction, onSuccess }) => {
+  const { categories, wallets, addTransaction, updateTransaction } = useFinance();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const isEditMode = !!transaction;
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      description: '',
-      amount: '',
-      type: 'expense',
-      date: new Date(),
-      walletId: walletId || '',
+      description: transaction?.description || '',
+      amount: transaction?.amount.toString() || '',
+      type: transaction?.type || 'expense',
+      categoryId: transaction?.categoryId || '',
+      date: transaction?.date ? new Date(transaction.date) : new Date(),
+      walletId: transaction?.walletId || walletId || '',
     },
   });
+  
+  useEffect(() => {
+    if (transaction) {
+      form.reset({
+        description: transaction.description,
+        amount: transaction.amount.toString(),
+        type: transaction.type,
+        categoryId: transaction.categoryId,
+        date: new Date(transaction.date),
+        walletId: transaction.walletId,
+      });
+    }
+  }, [transaction, form]);
   
   // Filter categories based on selected type
   const selectedType = form.watch('type');
@@ -82,23 +101,32 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
         walletId: values.walletId || walletId || '',
       };
       
-      addTransaction(transactionData);
+      if (isEditMode && transaction) {
+        updateTransaction({
+          ...transaction,
+          ...transactionData,
+        });
+      } else {
+        addTransaction(transactionData);
+      }
       
-      // Reset form
-      form.reset({
-        description: '',
-        amount: '',
-        type: 'expense',
-        categoryId: undefined,
-        date: new Date(),
-        walletId: walletId || '',
-      });
+      // Reset form if not editing
+      if (!isEditMode) {
+        form.reset({
+          description: '',
+          amount: '',
+          type: 'expense',
+          categoryId: undefined,
+          date: new Date(),
+          walletId: walletId || '',
+        });
+      }
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
-      console.error('Error adding transaction:', error);
+      console.error('Error handling transaction:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -108,8 +136,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
     <div className="max-h-[80vh] overflow-y-auto pb-4">
       <Card className="border-0 shadow-none">
         <CardHeader className="px-0 pt-0">
-          <CardTitle>Tambah Transaksi</CardTitle>
-          <CardDescription>Catat transaksi baru</CardDescription>
+          <CardTitle>{isEditMode ? 'Edit Transaksi' : 'Tambah Transaksi'}</CardTitle>
+          <CardDescription>
+            {isEditMode ? 'Perbarui detail transaksi' : 'Catat transaksi baru'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           <Form {...form}>
@@ -276,7 +306,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, onSuccess }
                 className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Menambahkan...' : 'Tambah Transaksi'}
+                {isSubmitting 
+                  ? (isEditMode ? 'Memperbarui...' : 'Menambahkan...') 
+                  : (isEditMode ? 'Perbarui Transaksi' : 'Tambah Transaksi')}
               </Button>
             </form>
           </Form>

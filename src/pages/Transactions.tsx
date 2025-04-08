@@ -7,7 +7,9 @@ import {
   ArrowUpDown, 
   TrendingUp, 
   TrendingDown,
-  Calendar
+  Calendar,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +27,16 @@ import {
   DialogContent,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Transaction as TransactionType } from '@/types';
@@ -36,11 +48,15 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const Transactions = () => {
-  const { transactions, categories, wallets } = useFinance();
+  const { transactions, categories, wallets, deleteTransaction } = useFinance();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'amount_high' | 'amount_low'>('newest');
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
+  const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState<TransactionType | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   // Filter and sort transactions
@@ -100,6 +116,77 @@ const Transactions = () => {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const handleEditTransaction = (transaction: TransactionType) => {
+    setTransactionToEdit(transaction);
+    setIsEditTransactionOpen(true);
+  };
+
+  const handleDeleteTransaction = (transactionId: string) => {
+    setTransactionToDelete(transactionId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTransaction = async () => {
+    if (transactionToDelete) {
+      await deleteTransaction(transactionToDelete);
+      setTransactionToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+  
+  const renderTransactionRow = (transaction: TransactionType) => {
+    const category = categories.find(c => c.id === transaction.categoryId);
+    const wallet = wallets.find(w => w.id === transaction.walletId);
+    
+    return (
+      <div key={transaction.id} className="grid grid-cols-7 p-4 hover:bg-muted/20 transition-colors">
+        <div className="col-span-2 flex items-center space-x-3">
+          <div className={`p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}`}>
+            {transaction.type === 'income' ? (
+              <TrendingUp className="h-4 w-4 text-finance-green" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-finance-red" />
+            )}
+          </div>
+          <div>
+            <p className="font-medium">{transaction.description}</p>
+          </div>
+        </div>
+        <div className="self-center">
+          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
+            {category?.name || 'Uncategorized'}
+          </span>
+        </div>
+        <div className="self-center text-muted-foreground">
+          {formatDate(transaction.date)}
+        </div>
+        <div className="self-center">
+          {wallet?.name || 'Unknown'}
+        </div>
+        <div className={`self-center font-medium ${transaction.type === 'income' ? 'text-finance-green' : 'text-finance-red'}`}>
+          {transaction.type === 'income' ? '+' : '-'} 
+          {formatCurrency(transaction.amount)}
+        </div>
+        <div className="self-center flex space-x-2 justify-end">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => handleEditTransaction(transaction)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => handleDeleteTransaction(transaction.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
   
   return (
@@ -225,12 +312,13 @@ const Transactions = () => {
           <Card>
             <CardContent className="p-0">
               <div className="rounded-md border">
-                <div className="grid grid-cols-6 bg-muted/50 p-4 font-medium">
+                <div className="grid grid-cols-7 bg-muted/50 p-4 font-medium">
                   <div className="col-span-2">Description</div>
                   <div>Category</div>
                   <div>Date</div>
                   <div>Wallet</div>
-                  <div className="text-right">Amount</div>
+                  <div>Amount</div>
+                  <div className="text-right">Actions</div>
                 </div>
                 <div className="divide-y">
                   {filteredTransactions.length === 0 ? (
@@ -238,42 +326,7 @@ const Transactions = () => {
                       No transactions found.
                     </div>
                   ) : (
-                    filteredTransactions.map(transaction => {
-                      const category = categories.find(c => c.id === transaction.categoryId);
-                      const wallet = wallets.find(w => w.id === transaction.walletId);
-                      
-                      return (
-                        <div key={transaction.id} className="grid grid-cols-6 p-4 hover:bg-muted/20 transition-colors">
-                          <div className="col-span-2 flex items-center space-x-3">
-                            <div className={`p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}`}>
-                              {transaction.type === 'income' ? (
-                                <TrendingUp className="h-4 w-4 text-finance-green" />
-                              ) : (
-                                <TrendingDown className="h-4 w-4 text-finance-red" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium">{transaction.description}</p>
-                            </div>
-                          </div>
-                          <div className="self-center">
-                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
-                              {category?.name || 'Uncategorized'}
-                            </span>
-                          </div>
-                          <div className="self-center text-muted-foreground">
-                            {formatDate(transaction.date)}
-                          </div>
-                          <div className="self-center">
-                            {wallet?.name || 'Unknown'}
-                          </div>
-                          <div className={`self-center text-right font-medium ${transaction.type === 'income' ? 'text-finance-green' : 'text-finance-red'}`}>
-                            {transaction.type === 'income' ? '+' : '-'} 
-                            {formatCurrency(transaction.amount)}
-                          </div>
-                        </div>
-                      );
-                    })
+                    filteredTransactions.map(transaction => renderTransactionRow(transaction))
                   )}
                 </div>
               </div>
@@ -285,12 +338,13 @@ const Transactions = () => {
           <Card>
             <CardContent className="p-0">
               <div className="rounded-md border">
-                <div className="grid grid-cols-6 bg-muted/50 p-4 font-medium">
+                <div className="grid grid-cols-7 bg-muted/50 p-4 font-medium">
                   <div className="col-span-2">Description</div>
                   <div>Category</div>
                   <div>Date</div>
                   <div>Wallet</div>
-                  <div className="text-right">Amount</div>
+                  <div>Amount</div>
+                  <div className="text-right">Actions</div>
                 </div>
                 <div className="divide-y">
                   {filteredTransactions.filter(t => t.type === 'income').length === 0 ? (
@@ -300,37 +354,7 @@ const Transactions = () => {
                   ) : (
                     filteredTransactions
                       .filter(t => t.type === 'income')
-                      .map(transaction => {
-                        const category = categories.find(c => c.id === transaction.categoryId);
-                        const wallet = wallets.find(w => w.id === transaction.walletId);
-                        
-                        return (
-                          <div key={transaction.id} className="grid grid-cols-6 p-4 hover:bg-muted/20 transition-colors">
-                            <div className="col-span-2 flex items-center space-x-3">
-                              <div className="p-2 rounded-full bg-green-100">
-                                <TrendingUp className="h-4 w-4 text-finance-green" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{transaction.description}</p>
-                              </div>
-                            </div>
-                            <div className="self-center">
-                              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
-                                {category?.name || 'Uncategorized'}
-                              </span>
-                            </div>
-                            <div className="self-center text-muted-foreground">
-                              {formatDate(transaction.date)}
-                            </div>
-                            <div className="self-center">
-                              {wallet?.name || 'Unknown'}
-                            </div>
-                            <div className="self-center text-right font-medium text-finance-green">
-                              + {formatCurrency(transaction.amount)}
-                            </div>
-                          </div>
-                        );
-                      })
+                      .map(transaction => renderTransactionRow(transaction))
                   )}
                 </div>
               </div>
@@ -342,12 +366,13 @@ const Transactions = () => {
           <Card>
             <CardContent className="p-0">
               <div className="rounded-md border">
-                <div className="grid grid-cols-6 bg-muted/50 p-4 font-medium">
+                <div className="grid grid-cols-7 bg-muted/50 p-4 font-medium">
                   <div className="col-span-2">Description</div>
                   <div>Category</div>
                   <div>Date</div>
                   <div>Wallet</div>
-                  <div className="text-right">Amount</div>
+                  <div>Amount</div>
+                  <div className="text-right">Actions</div>
                 </div>
                 <div className="divide-y">
                   {filteredTransactions.filter(t => t.type === 'expense').length === 0 ? (
@@ -357,37 +382,7 @@ const Transactions = () => {
                   ) : (
                     filteredTransactions
                       .filter(t => t.type === 'expense')
-                      .map(transaction => {
-                        const category = categories.find(c => c.id === transaction.categoryId);
-                        const wallet = wallets.find(w => w.id === transaction.walletId);
-                        
-                        return (
-                          <div key={transaction.id} className="grid grid-cols-6 p-4 hover:bg-muted/20 transition-colors">
-                            <div className="col-span-2 flex items-center space-x-3">
-                              <div className="p-2 rounded-full bg-red-100">
-                                <TrendingDown className="h-4 w-4 text-finance-red" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{transaction.description}</p>
-                              </div>
-                            </div>
-                            <div className="self-center">
-                              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100">
-                                {category?.name || 'Uncategorized'}
-                              </span>
-                            </div>
-                            <div className="self-center text-muted-foreground">
-                              {formatDate(transaction.date)}
-                            </div>
-                            <div className="self-center">
-                              {wallet?.name || 'Unknown'}
-                            </div>
-                            <div className="self-center text-right font-medium text-finance-red">
-                              - {formatCurrency(transaction.amount)}
-                            </div>
-                          </div>
-                        );
-                      })
+                      .map(transaction => renderTransactionRow(transaction))
                   )}
                 </div>
               </div>
@@ -395,6 +390,42 @@ const Transactions = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Edit Transaction Dialog */}
+      <Dialog open={isEditTransactionOpen} onOpenChange={setIsEditTransactionOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          {transactionToEdit && (
+            <TransactionForm 
+              transaction={transactionToEdit} 
+              onSuccess={() => {
+                setIsEditTransactionOpen(false);
+                setTransactionToEdit(null);
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Transaction Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteTransaction}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

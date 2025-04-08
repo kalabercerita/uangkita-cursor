@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Card, 
@@ -10,15 +10,22 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/contexts/FinanceContext';
-import { Wallet, CreditCard, ArrowLeftRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, ArrowLeftRight, TrendingUp, TrendingDown, Edit } from 'lucide-react';
 import TransactionForm from '@/components/TransactionForm';
+import WalletEditForm from '@/components/WalletEditForm';
 import { useToast } from '@/components/ui/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const WalletDetail = () => {
   const { walletId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { wallets, transactions, setCurrentWallet } = useFinance();
+  const [isEditWalletOpen, setIsEditWalletOpen] = useState(false);
   
   const wallet = wallets.find(w => w.id === walletId);
   
@@ -88,6 +95,23 @@ const WalletDetail = () => {
           </Button>
           <span className={`w-3 h-3 rounded-full bg-${wallet.color || 'finance-teal'}`}></span>
           {wallet.name}
+          <Dialog open={isEditWalletOpen} onOpenChange={setIsEditWalletOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="ml-2"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[400px]">
+              <WalletEditForm 
+                wallet={wallet} 
+                onSuccess={() => setIsEditWalletOpen(false)} 
+              />
+            </DialogContent>
+          </Dialog>
         </h2>
       </div>
       

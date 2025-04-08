@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Wallet } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nama dompet diperlukan' }),
@@ -30,6 +31,7 @@ interface WalletEditFormProps {
 
 const WalletEditForm: React.FC<WalletEditFormProps> = ({ wallet, onSuccess }) => {
   const { updateWallet } = useFinance();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<FormValues>({
@@ -55,12 +57,21 @@ const WalletEditForm: React.FC<WalletEditFormProps> = ({ wallet, onSuccess }) =>
       };
       
       await updateWallet(updatedWallet);
+      toast({
+        title: "Berhasil",
+        description: "Nama dompet berhasil diperbarui",
+      });
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
       console.error('Error updating wallet:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memperbarui nama dompet",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

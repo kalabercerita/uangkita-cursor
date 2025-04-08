@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Camera, KeyRound } from 'lucide-react';
+import { Camera, KeyRound, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -83,6 +84,19 @@ const Profile = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      toast({
+        title: "Gagal",
+        description: "Gagal keluar dari aplikasi",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getInitials = (email: string) => {
     if (!email) return '?';
     return email.charAt(0).toUpperCase();
@@ -135,6 +149,15 @@ const Profile = () => {
                 <Label htmlFor="user-id">ID Pengguna</Label>
                 <Input id="user-id" value={user?.id || ''} readOnly className="bg-gray-50" />
               </div>
+              
+              <Button 
+                onClick={handleLogout}
+                className="w-full bg-red-500 hover:bg-red-600 text-white"
+                variant="destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Keluar dari Aplikasi
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/contexts/FinanceContext';
-import { Wallet, ArrowLeftRight, TrendingUp, TrendingDown, Edit } from 'lucide-react';
+import { ArrowLeftRight, TrendingUp, TrendingDown, Edit } from 'lucide-react';
 import TransactionForm from '@/components/TransactionForm';
 import WalletEditForm from '@/components/WalletEditForm';
 import { useToast } from '@/components/ui/use-toast';

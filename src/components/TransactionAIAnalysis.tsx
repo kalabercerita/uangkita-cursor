@@ -65,11 +65,12 @@ const generateAnalysis = (transactions: any[], categories: any[]) => {
   }
 
   // Saving rate insights
-  if (Number(savingsRate) > 20) {
+  const savingsRateNumber = parseFloat(savingsRate.toString());
+  if (savingsRateNumber > 20) {
     insights.push(`Tingkat tabungan Anda sangat baik (${savingsRate}%). Anda menyimpan sebagian besar pendapatan Anda.`);
-  } else if (Number(savingsRate) > 10) {
+  } else if (savingsRateNumber > 10) {
     insights.push(`Tingkat tabungan Anda cukup baik (${savingsRate}%). Anda berhasil menyimpan sebagian pendapatan Anda.`);
-  } else if (Number(savingsRate) > 0) {
+  } else if (savingsRateNumber > 0) {
     insights.push(`Tingkat tabungan Anda rendah (${savingsRate}%). Pertimbangkan untuk meningkatkan jumlah yang Anda tabung.`);
   } else {
     insights.push(`Anda tidak menabung dari pendapatan Anda. Pengeluaran Anda lebih besar dari pendapatan.`);
@@ -100,11 +101,12 @@ const generateAnalysis = (transactions: any[], categories: any[]) => {
   // Provide recommendations
   const recommendations = [];
 
-  if (Number(savingsRate) < 20) {
+  const topExpensePercentageNumber = parseFloat(topExpensePercentage.toString());
+  if (savingsRateNumber < 20) {
     recommendations.push("Tingkatkan tabungan Anda dengan menetapkan target tabungan minimal 20% dari pendapatan.");
   }
 
-  if (topExpenseCategory && topExpensePercentage > 30) {
+  if (topExpenseCategory && topExpensePercentageNumber > 30) {
     recommendations.push(`Pertimbangkan untuk mengurangi pengeluaran di kategori ${topExpenseCategory[0]} yang menyumbang persentase besar dari total pengeluaran Anda.`);
   }
 

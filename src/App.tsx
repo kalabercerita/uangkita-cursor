@@ -17,7 +17,14 @@ import WalletDetail from "./pages/WalletDetail";
 import Profile from "./pages/Profile";
 import CurrencyConverter from "./components/CurrencyConverter";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

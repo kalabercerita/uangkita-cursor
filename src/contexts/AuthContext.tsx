@@ -2,80 +2,135 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { User } from '@/types';
+import { supabase } from "@/integrations/supabase/client";
+import { Session } from '@supabase/supabase-js';
 
 type AuthContextType = {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
-  // Adding a stub for password update - would be implemented with a real backend
-  updatePassword?: (currentPassword: string, newPassword: string) => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  session: null,
   isLoading: true,
   isAuthenticated: false,
   login: async () => {},
+  loginWithGoogle: async () => {},
   register: async () => {},
   logout: async () => {},
+  updatePassword: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   // Check for existing session on load
   useEffect(() => {
-    const checkSession = () => {
-      // Mock auth for now - will be replaced with Supabase
-      const savedUser = localStorage.getItem('finnyUser');
-      
-      if (savedUser) {
-        try {
-          setUser(JSON.parse(savedUser));
-        } catch (error) {
-          console.error('Failed to parse saved user:', error);
-          localStorage.removeItem('finnyUser');
-        }
+    // Set up the auth state change listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ? {
+          id: newSession.user.id,
+          email: newSession.user.email || '',
+          name: newSession.user.user_metadata?.name || newSession.user.email?.split('@')[0] || ''
+        } : null);
       }
-      
-      setIsLoading(false);
+    );
+    
+    // Check for existing session
+    const getInitialSession = async () => {
+      try {
+        setIsLoading(true);
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (initialSession) {
+          setSession(initialSession);
+          setUser({
+            id: initialSession.user.id,
+            email: initialSession.user.email || '',
+            name: initialSession.user.user_metadata?.name || initialSession.user.email?.split('@')[0] || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error getting session:', error);
+        toast({
+          title: "Error",
+          description: "Gagal memuat data sesi",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
-
-    checkSession();
-  }, []);
+    
+    getInitialSession();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [toast]);
 
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       
-      // Mock login - will be replaced with Supabase
-      // In a real app, validate credentials against a database
-      const mockUser: User = {
-        id: '1',
-        email: email,
-        name: email.split('@')[0]
-      };
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-      setUser(mockUser);
-      localStorage.setItem('finnyUser', JSON.stringify(mockUser));
+      if (error) throw error;
       
       toast({
-        title: "Login successful",
-        description: "Welcome back!",
+        title: "Login berhasil",
+        description: "Selamat datang kembali!",
       });
 
     } catch (error) {
       console.error('Login error:', error);
       toast({
-        title: "Login failed",
-        description: "Invalid email or password",
+        title: "Login gagal",
+        description: "Email atau password tidak valid",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) throw error;
+      
+    } catch (error) {
+      console.error('Google login error:', error);
+      toast({
+        title: "Login gagal",
+        description: "Gagal login dengan Google",
         variant: "destructive",
       });
       throw error;
@@ -88,26 +143,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      // Mock registration - will be replaced with Supabase
-      const mockUser: User = {
-        id: '1',
-        email: email,
-        name: name || email.split('@')[0]
-      };
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name || email.split('@')[0]
+          }
+        }
+      });
 
-      setUser(mockUser);
-      localStorage.setItem('finnyUser', JSON.stringify(mockUser));
+      if (error) throw error;
       
       toast({
-        title: "Registration successful",
-        description: "Your account has been created",
+        title: "Registrasi berhasil",
+        description: "Akun Anda telah dibuat",
       });
 
     } catch (error) {
       console.error('Registration error:', error);
       toast({
-        title: "Registration failed",
-        description: "Could not create your account",
+        title: "Registrasi gagal",
+        description: "Tidak dapat membuat akun Anda",
         variant: "destructive",
       });
       throw error;
@@ -120,20 +177,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      // Mock logout - will be replaced with Supabase
-      setUser(null);
-      localStorage.removeItem('finnyUser');
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
       
       toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
+        title: "Logout berhasil",
+        description: "Anda telah keluar dari aplikasi",
       });
 
     } catch (error) {
       console.error('Logout error:', error);
       toast({
-        title: "Logout failed",
-        description: "There was a problem logging you out",
+        title: "Logout gagal",
+        description: "Terjadi masalah saat mencoba keluar",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      setIsLoading(true);
+      
+      // First verify the current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword
+      });
+      
+      if (signInError) {
+        throw new Error("Password saat ini tidak valid");
+      }
+      
+      // Update to the new password
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password diperbarui",
+        description: "Password Anda telah berhasil diperbarui",
+      });
+      
+    } catch (error) {
+      console.error('Password update error:', error);
+      toast({
+        title: "Gagal memperbarui password",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat memperbarui password",
         variant: "destructive",
       });
       throw error;
@@ -146,11 +242,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
+        session,
         isLoading,
         isAuthenticated: !!user,
         login,
+        loginWithGoogle,
         register,
-        logout
+        logout,
+        updatePassword
       }}
     >
       {children}

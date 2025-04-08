@@ -1,224 +1,562 @@
 
-import React, { useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DatePicker } from '@/components/ui/date-picker';
+import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
-import { Period } from '@/types';
-import { 
-  BarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
+import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { Calendar as CalendarIcon, Download, BarChart4, PieChart, TrendingUp, LineChart } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
-  PieChart,
+  PieChart as RPieChart,
   Pie,
-  Cell
+  Cell,
+  Line,
+  LineChart as RLineChart,
+  Area,
+  AreaChart
 } from 'recharts';
-import ExportMenu from '@/components/ExportMenu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Period } from '@/types';
+import TransactionAIAnalysis from '@/components/TransactionAIAnalysis';
 
 const Reports = () => {
-  const { getReport } = useFinance();
-  const [period, setPeriod] = React.useState<Period>('monthly');
-  const [startDate, setStartDate] = React.useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-  const contentRef = useRef<HTMLDivElement>(null);
+  // State for date range picker
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: new Date()
+  });
   
-  // Get report based on selected period
-  const report = getReport(period, startDate, endDate);
+  // Period type for reports (daily, weekly, monthly, yearly, custom)
+  const [period, setPeriod] = useState<Period>('monthly');
   
-  // Colors for charts
-  const COLORS = ['#48BB78', '#F56565', '#4299E1', '#ECC94B', '#9F7AEA', '#ED8936', '#38B2AC', '#667EEA'];
+  // Report type (income, expense, balance)
+  const [reportType, setReportType] = useState('expense');
   
-  // Format number as Indonesian Rupiah
-  const formatRupiah = (value: number) => {
+  const { transactions, categories, getReport } = useFinance();
+  
+  // Get report data based on selected period
+  const reportData = getReport(
+    period, 
+    date?.from, 
+    date?.to
+  );
+  
+  // Check if we have data to display
+  const hasData = period === 'custom' 
+    ? reportData.totalIncome > 0 || reportData.totalExpense > 0
+    : transactions.length > 0;
+    
+  // Generate the title based on period
+  const getReportTitle = () => {
+    if (period === 'daily') return 'Laporan Harian';
+    if (period === 'weekly') return 'Laporan Mingguan';
+    if (period === 'monthly') return 'Laporan Bulanan';
+    if (period === 'yearly') return 'Laporan Tahunan';
+    if (period === 'custom') {
+      if (date?.from && date?.to) {
+        return `Laporan ${format(date.from, 'd MMMM', { locale: id })} - ${format(date.to, 'd MMMM yyyy', { locale: id })}`;
+      }
+      return 'Laporan Kustom';
+    }
+    return 'Laporan';
+  };
+  
+  // Format currency
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(value);
+    }).format(amount);
   };
   
-  // Custom tooltip formatter for charts
-  const tooltipFormatter = (value: number) => formatRupiah(value);
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFACE4'];
   
-  // Prepare monthly data for line/bar charts
-  const getMonthlyData = () => {
-    const today = new Date();
-    const months = [];
+  // Prepare pie chart data
+  const pieChartData = reportData.categorySummary
+    .filter(item => (reportType === 'income' ? item.amount > 0 : 
+                     reportType === 'expense' ? item.amount < 0 : true))
+    .map(item => ({
+      name: item.categoryName,
+      value: Math.abs(item.amount)
+    }));
     
-    for (let i = 6; i >= 0; i--) {
-      const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthStr = month.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-      months.push(monthStr);
-    }
+  // Sum for calculating percentages
+  const pieTotal = pieChartData.reduce((sum, item) => sum + item.value, 0);
+  
+  // Prepare bar chart data (top categories)
+  const barChartData = [...reportData.categorySummary]
+    .filter(item => (reportType === 'income' ? item.amount > 0 : 
+                     reportType === 'expense' ? item.amount < 0 : true))
+    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+    .slice(0, 5)
+    .map(item => ({
+      name: item.categoryName,
+      value: Math.abs(item.amount)
+    }));
+
+  // Prepare line chart data for income and expenses by date
+  const generateDailyTransactionData = () => {
+    if (!date?.from || !date?.to) return [];
     
-    return months.map(month => {
-      // Mock data - would be replaced with actual data in a real app
+    // Create array of all days in the range
+    const days = eachDayOfInterval({ start: date.from, end: date.to });
+    
+    return days.map(day => {
+      // Find transactions for this day
+      const dayTransactions = transactions.filter(t => {
+        const transDate = new Date(t.date);
+        return isSameDay(transDate, day);
+      });
+      
+      // Calculate totals
+      const income = dayTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+        
+      const expense = dayTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+        
       return {
-        name: month,
-        income: Math.random() * 5000000 + 1000000,
-        expense: Math.random() * 3000000 + 500000,
-        balance: Math.random() * 2000000
+        date: format(day, 'dd/MM'),
+        income,
+        expense,
+        balance: income - expense
       };
     });
   };
-  
-  const monthlyData = getMonthlyData();
-  
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Laporan</h1>
-        <ExportMenu contentRef={contentRef} title="Laporan_UangKita" />
-      </div>
+
+  // Generate comparison data for current month vs previous month
+  const generateMonthComparisonData = () => {
+    const currentMonth = new Date();
+    const previousMonth = subMonths(currentMonth, 1);
+    
+    // Current month transactions
+    const currentMonthStart = startOfMonth(currentMonth);
+    const currentMonthTransactions = transactions.filter(t => {
+      const transDate = new Date(t.date);
+      return transDate >= currentMonthStart && transDate <= currentMonth;
+    });
+    
+    // Previous month transactions
+    const previousMonthStart = startOfMonth(previousMonth);
+    const previousMonthEnd = endOfMonth(previousMonth);
+    const previousMonthTransactions = transactions.filter(t => {
+      const transDate = new Date(t.date);
+      return transDate >= previousMonthStart && transDate <= previousMonthEnd;
+    });
+    
+    // Calculate totals
+    const currentIncome = currentMonthTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
       
-      <div ref={contentRef} className="space-y-4">
+    const currentExpense = currentMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    const previousIncome = previousMonthTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    const previousExpense = previousMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    return {
+      current: {
+        income: currentIncome,
+        expense: currentExpense,
+        balance: currentIncome - currentExpense
+      },
+      previous: {
+        income: previousIncome,
+        expense: previousExpense,
+        balance: previousIncome - previousExpense
+      }
+    };
+  };
+  
+  const lineChartData = generateDailyTransactionData();
+  const comparisonData = generateMonthComparisonData();
+  
+  // Custom tooltip formatter for line chart
+  const lineChartTooltipFormatter = (value: number) => {
+    return formatCurrency(value);
+  };
+
+  // Compare current month with same period last month
+  const renderTrendComparison = () => {
+    if (!comparisonData || !comparisonData.current) return null;
+    
+    const expenseDiff = comparisonData.current.expense - comparisonData.previous.expense;
+    const expensePercentChange = comparisonData.previous.expense === 0 
+      ? 100 
+      : (expenseDiff / comparisonData.previous.expense) * 100;
+      
+    const incomeDiff = comparisonData.current.income - comparisonData.previous.income;
+    const incomePercentChange = comparisonData.previous.income === 0 
+      ? 100 
+      : (incomeDiff / comparisonData.previous.income) * 100;
+      
+    return (
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <CardTitle>Periode Laporan</CardTitle>
-              <div className="flex mt-2 md:mt-0 space-x-2">
-                <Tabs defaultValue="monthly" 
-                  onValueChange={(value) => setPeriod(value as Period)}
-                  className="w-full md:w-auto">
-                  <TabsList>
-                    <TabsTrigger value="daily">Harian</TabsTrigger>
-                    <TabsTrigger value="weekly">Mingguan</TabsTrigger>
-                    <TabsTrigger value="monthly">Bulanan</TabsTrigger>
-                    <TabsTrigger value="yearly">Tahunan</TabsTrigger>
-                    <TabsTrigger value="custom">Kustom</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Tren Pengeluaran</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardDescription className="text-2xl font-bold">
+                {formatCurrency(comparisonData.current.expense)}
+              </CardDescription>
+              <div className={`text-sm font-medium ${expenseDiff > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {expenseDiff > 0 ? '+' : ''}{expensePercentChange.toFixed(1)}% dari bulan lalu
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {period === 'custom' && (
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                <div className="flex-1">
-                  <p className="mb-2 text-sm">Tanggal Mulai</p>
-                  <DatePicker date={startDate} setDate={setStartDate} />
-                </div>
-                <div className="flex-1">
-                  <p className="mb-2 text-sm">Tanggal Akhir</p>
-                  <DatePicker date={endDate} setDate={setEndDate} />
-                </div>
-              </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Pemasukan</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatRupiah(report.totalIncome)}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Pengeluaran</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-600">
-                    {formatRupiah(report.totalExpense)}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Saldo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {formatRupiah(report.balance)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="space-y-8">
-              <div>
-                <h3 className="text-lg font-medium mb-4">Perbandingan Pemasukan dan Pengeluaran</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={monthlyData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(value) => formatRupiah(value).split(',')[0]} />
-                      <Tooltip formatter={tooltipFormatter} />
-                      <Legend />
-                      <Bar dataKey="income" name="Pemasukan" fill="#48BB78" />
-                      <Bar dataKey="expense" name="Pengeluaran" fill="#F56565" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-medium mb-4">Tren Keuangan</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={monthlyData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(value) => formatRupiah(value).split(',')[0]} />
-                      <Tooltip formatter={tooltipFormatter} />
-                      <Legend />
-                      <Line type="monotone" dataKey="income" name="Pemasukan" stroke="#48BB78" strokeWidth={2} />
-                      <Line type="monotone" dataKey="expense" name="Pengeluaran" stroke="#F56565" strokeWidth={2} />
-                      <Line type="monotone" dataKey="balance" name="Saldo" stroke="#3B82F6" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-medium mb-4">Pengeluaran per Kategori</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={report.categorySummary.filter(cat => cat.amount < 0).map(cat => ({
-                          name: cat.categoryName,
-                          value: Math.abs(cat.amount)
-                        }))}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {report.categorySummary.filter(cat => cat.amount < 0).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={tooltipFormatter} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Tren Pendapatan</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardDescription className="text-2xl font-bold">
+                {formatCurrency(comparisonData.current.income)}
+              </CardDescription>
+              <div className={`text-sm font-medium ${incomeDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {incomeDiff > 0 ? '+' : ''}{incomePercentChange.toFixed(1)}% dari bulan lalu
               </div>
             </div>
-          </CardContent>
+          </CardHeader>
         </Card>
       </div>
+    );
+  };
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <h1 className="text-2xl font-bold">{getReportTitle()}</h1>
+        
+        <div className="flex mt-2 sm:mt-0 space-x-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-9 flex items-center text-gray-600">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, 'dd/MM/yyyy')} - {format(date.to, 'dd/MM/yyyy')}
+                    </>
+                  ) : (
+                    format(date.from, 'dd/MM/yyyy')
+                  )
+                ) : (
+                  <span>Pilih tanggal</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={(range) => {
+                  setDate(range);
+                  if (range?.from && range?.to) {
+                    setPeriod('custom');
+                  }
+                }}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <Button variant="outline" size="sm" className="h-9">
+            <Download className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+        </div>
+      </div>
+      
+      <Tabs defaultValue={period} onValueChange={(value) => setPeriod(value as Period)}>
+        <TabsList className="grid grid-cols-4">
+          <TabsTrigger value="daily">Harian</TabsTrigger>
+          <TabsTrigger value="weekly">Mingguan</TabsTrigger>
+          <TabsTrigger value="monthly">Bulanan</TabsTrigger>
+          <TabsTrigger value="yearly">Tahunan</TabsTrigger>
+        </TabsList>
+        
+        {['daily', 'weekly', 'monthly', 'yearly', 'custom'].map((periodValue) => (
+          <TabsContent key={periodValue} value={periodValue}>
+            {hasData ? (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Total Pemasukan
+                      </CardTitle>
+                      <CardDescription className="text-2xl font-bold text-green-600">
+                        {formatCurrency(reportData.totalIncome)}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Total Pengeluaran
+                      </CardTitle>
+                      <CardDescription className="text-2xl font-bold text-red-600">
+                        {formatCurrency(reportData.totalExpense)}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Saldo
+                      </CardTitle>
+                      <CardDescription className={`text-2xl font-bold ${reportData.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(reportData.balance)}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </div>
+                
+                {/* Line chart for income and expense trends */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Tren Keuangan</CardTitle>
+                      <CardDescription>
+                        Pemasukan dan pengeluaran dari waktu ke waktu
+                      </CardDescription>
+                    </div>
+                    <LineChart className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    {lineChartData.length > 0 ? (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RLineChart
+                            data={lineChartData}
+                            margin={{
+                              top: 20,
+                              right: 30,
+                              left: 20,
+                              bottom: 10,
+                            }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <Tooltip 
+                              formatter={lineChartTooltipFormatter}
+                              labelFormatter={(label) => `Tanggal: ${label}`}
+                            />
+                            <Legend />
+                            <Line 
+                              type="monotone" 
+                              dataKey="income" 
+                              name="Pemasukan"
+                              stroke="#10b981" 
+                              strokeWidth={2}
+                              activeDot={{ r: 8 }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="expense" 
+                              name="Pengeluaran"
+                              stroke="#ef4444" 
+                              strokeWidth={2}
+                            />
+                          </RLineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                {/* Month comparison data */}
+                {renderTrendComparison()}
+
+                <Tabs defaultValue={reportType} onValueChange={setReportType}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="expense">Pengeluaran</TabsTrigger>
+                    <TabsTrigger value="income">Pemasukan</TabsTrigger>
+                    <TabsTrigger value="all">Semua</TabsTrigger>
+                  </TabsList>
+                  
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {/* Pie Chart */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                          <CardTitle>Distribusi {reportType === 'income' ? 'Pemasukan' : reportType === 'expense' ? 'Pengeluaran' : 'Transaksi'}</CardTitle>
+                          <CardDescription>
+                            Berdasarkan kategori
+                          </CardDescription>
+                        </div>
+                        <PieChart className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        {pieChartData.length > 0 ? (
+                          <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RPieChart>
+                                <Pie
+                                  data={pieChartData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                  outerRadius={80}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {pieChartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                              </RPieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <div className="h-[300px] flex items-center justify-center">
+                            <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Bar Chart */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                          <CardTitle>
+                            Top Kategori
+                          </CardTitle>
+                          <CardDescription>
+                            {reportType === 'income' ? 'Pemasukan' : reportType === 'expense' ? 'Pengeluaran' : 'Transaksi'} terbesar
+                          </CardDescription>
+                        </div>
+                        <BarChart4 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        {barChartData.length > 0 ? (
+                          <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                data={barChartData}
+                                margin={{
+                                  top: 20,
+                                  right: 30,
+                                  left: 20,
+                                  bottom: 5,
+                                }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis tickFormatter={(value) => formatCurrency(value).split(',')[0]} />
+                                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                <Bar 
+                                  dataKey="value" 
+                                  fill={reportType === 'income' ? '#10b981' : reportType === 'expense' ? '#ef4444' : '#3b82f6'} 
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <div className="h-[300px] flex items-center justify-center">
+                            <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  {/* Category Details */}
+                  <Card className="mt-4">
+                    <CardHeader>
+                      <CardTitle>Detail Kategori</CardTitle>
+                      <CardDescription>
+                        Rincian {reportType === 'income' ? 'pemasukan' : reportType === 'expense' ? 'pengeluaran' : 'transaksi'} per kategori
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {pieChartData.length > 0 ? (
+                        <div className="space-y-2">
+                          {pieChartData.map((item, index) => (
+                            <div key={index} className="flex items-center justify-between py-2 border-b">
+                              <div className="flex items-center">
+                                <div 
+                                  className="w-3 h-3 rounded-full mr-2" 
+                                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                ></div>
+                                <span>{item.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium">{formatCurrency(item.value)}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {pieTotal > 0 ? `${((item.value / pieTotal) * 100).toFixed(1)}%` : '0%'}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-8 text-center">
+                          <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Tabs>
+
+                {/* AI Analysis Card */}
+                <Card className="mt-4">
+                  <CardContent className="pt-6">
+                    <TransactionAIAnalysis />
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card className="mt-4">
+                <CardContent className="py-8 text-center">
+                  <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+                  <h3 className="mt-4 text-lg font-medium">Tidak Ada Data</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Tidak ada transaksi dalam periode yang dipilih. Silakan pilih periode lain atau tambahkan transaksi.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 };

@@ -273,7 +273,7 @@ const Dashboard = () => {
         </Card>
       )}
       
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Modified to only show the Plus icon */}
       <Dialog open={transactionDialog} onOpenChange={setTransactionDialog}>
         <DialogTrigger asChild>
           <button className="floating-action-button">

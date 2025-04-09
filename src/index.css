@@ -87,6 +87,23 @@
   .dark .sidebar {
     @apply bg-card border-border;
   }
+  
+  /* Additional dark mode styles */
+  .dark .bg-muted {
+    @apply bg-muted;
+  }
+  
+  .dark .bg-gray-50 {
+    @apply bg-background;
+  }
+  
+  .dark .bg-white {
+    @apply bg-card;
+  }
+  
+  .dark .text-muted-foreground {
+    @apply text-muted-foreground;
+  }
 }
 
 @layer components {

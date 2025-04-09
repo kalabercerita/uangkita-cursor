@@ -90,19 +90,19 @@
   
   /* Additional dark mode styles */
   .dark .bg-muted {
-    @apply bg-muted;
+    background-color: hsl(var(--muted));
   }
   
   .dark .bg-gray-50 {
-    @apply bg-background;
+    background-color: hsl(var(--background));
   }
   
   .dark .bg-white {
-    @apply bg-card;
+    background-color: hsl(var(--card));
   }
   
   .dark .text-muted-foreground {
-    @apply text-muted-foreground;
+    color: hsl(var(--muted-foreground));
   }
 }
 

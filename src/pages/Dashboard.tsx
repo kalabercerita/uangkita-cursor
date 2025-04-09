@@ -51,6 +51,7 @@ const Dashboard = () => {
   const last7Days = useMemo(() => {
     const result = [];
     const today = new Date();
+    let cumulativeBalance = 0; // Track running balance across days
     
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
@@ -79,11 +80,14 @@ const Dashboard = () => {
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       
+      // Update the cumulative balance by adding income and subtracting expense
+      cumulativeBalance += (income - expense);
+      
       result.push({ 
         name: dateStr, 
         income, 
         expense,
-        balance: income - expense
+        balance: cumulativeBalance // Use cumulative balance instead of daily balance
       });
     }
     

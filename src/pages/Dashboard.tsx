@@ -1,9 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinance } from '@/contexts/FinanceContext';
-import { ArrowUpRight, ArrowDownRight, Wallet, BarChart4, CalendarDays } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, BarChart4, CalendarDays, Plus } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
@@ -19,9 +19,12 @@ import {
   Legend
 } from 'recharts';
 import TransactionAIAnalysis from '@/components/TransactionAIAnalysis';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import TransactionForm from '@/components/TransactionForm';
 
 const Dashboard = () => {
   const { wallets, transactions, categories, getReport } = useFinance();
+  const [transactionDialog, setTransactionDialog] = useState(false);
   
   // Get monthly report
   const monthlyReport = getReport('monthly');
@@ -29,7 +32,10 @@ const Dashboard = () => {
   // Check if we have any transactions
   const hasTransactions = transactions.length > 0;
   
-  // Calculate the balance (total income - total expense)
+  // Calculate the total balance from all wallets
+  const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+  
+  // Calculate income and expense totals
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -37,8 +43,6 @@ const Dashboard = () => {
   const totalExpense = transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
-    
-  const totalBalance = totalIncome - totalExpense;
   
   // Calculate this month's income and expenses from the report
   const { totalIncome: monthlyIncome, totalExpense: monthlyExpense } = monthlyReport;
@@ -264,6 +268,18 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       )}
+      
+      {/* Floating Action Button */}
+      <Dialog open={transactionDialog} onOpenChange={setTransactionDialog}>
+        <DialogTrigger asChild>
+          <button className="floating-action-button">
+            <Plus className="h-6 w-6" />
+          </button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <TransactionForm onSuccess={() => setTransactionDialog(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

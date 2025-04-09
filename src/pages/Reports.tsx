@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, 
+         eachHourOfInterval, startOfDay, endOfDay, eachWeekOfInterval, startOfWeek, endOfWeek, 
+         eachMonthOfInterval, startOfYear, endOfYear, subYears } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Download, BarChart4, PieChart, TrendingUp, LineChart } from 'lucide-react';
 import {
@@ -112,33 +113,88 @@ const Reports = () => {
       value: Math.abs(item.amount)
     }));
 
-  // Prepare line chart data for income and expenses by date
-  const generateDailyTransactionData = () => {
+  // Prepare line chart data for income and expenses by date based on the selected period
+  const generatePeriodTransactionData = () => {
     if (!date?.from || !date?.to) return [];
     
-    // Create array of all days in the range
-    const days = eachDayOfInterval({ start: date.from, end: date.to });
+    let intervals = [];
+    let formatStr = '';
     
-    return days.map(day => {
-      // Find transactions for this day
-      const dayTransactions = transactions.filter(t => {
-        const transDate = new Date(t.date);
-        return isSameDay(transDate, day);
-      });
+    if (period === 'daily') {
+      // For daily view - show hours
+      const start = startOfDay(new Date());
+      const end = endOfDay(new Date());
+      intervals = eachHourOfInterval({ start, end });
+      formatStr = 'HH:mm';
+    } else if (period === 'weekly') {
+      // For weekly view - show days of the week
+      const now = new Date();
+      const start = startOfWeek(now, { weekStartsOn: 1 });
+      const end = endOfWeek(now, { weekStartsOn: 1 });
+      intervals = eachDayOfInterval({ start, end });
+      formatStr = 'EEE';
+    } else if (period === 'monthly') {
+      // For monthly view - show days of the month
+      const now = new Date();
+      const start = startOfMonth(now);
+      const end = endOfMonth(now);
+      intervals = eachDayOfInterval({ start, end });
+      formatStr = 'dd/MM';
+    } else if (period === 'yearly') {
+      // For yearly view - show months
+      const now = new Date();
+      const start = startOfYear(now);
+      const end = endOfYear(now);
+      intervals = eachMonthOfInterval({ start, end });
+      formatStr = 'MMM';
+    } else if (period === 'custom') {
+      // For custom period - show all days in the range
+      intervals = eachDayOfInterval({ start: date.from, end: date.to });
+      formatStr = 'dd/MM';
+    }
+    
+    return intervals.map(interval => {
+      // Find transactions for this interval
+      let filteredTransactions = [];
+      
+      if (period === 'daily') {
+        // For daily (hourly intervals)
+        const intervalHour = interval.getHours();
+        filteredTransactions = transactions.filter(t => {
+          const transDate = new Date(t.date);
+          return transDate.getHours() === intervalHour && 
+                 isSameDay(transDate, new Date());
+        });
+      } else if (period === 'weekly' || period === 'monthly' || period === 'custom') {
+        // For weekly, monthly, and custom (daily intervals)
+        filteredTransactions = transactions.filter(t => {
+          const transDate = new Date(t.date);
+          return isSameDay(transDate, interval);
+        });
+      } else if (period === 'yearly') {
+        // For yearly (monthly intervals)
+        const intervalMonth = interval.getMonth();
+        const intervalYear = interval.getFullYear();
+        filteredTransactions = transactions.filter(t => {
+          const transDate = new Date(t.date);
+          return transDate.getMonth() === intervalMonth && 
+                 transDate.getFullYear() === intervalYear;
+        });
+      }
       
       // Calculate totals
-      const income = dayTransactions
+      const income = filteredTransactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
         
-      const expense = dayTransactions
+      const expense = filteredTransactions
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
         
       return {
-        date: format(day, 'dd/MM'),
+        date: format(interval, formatStr, { locale: id }),
         income,
-        expense,
+        expense: expense * -1, // Convert expense to negative for visualization
         balance: income - expense
       };
     });
@@ -195,7 +251,7 @@ const Reports = () => {
     };
   };
   
-  const lineChartData = generateDailyTransactionData();
+  const lineChartData = generatePeriodTransactionData();
   const comparisonData = generateMonthComparisonData();
   
   // Custom tooltip formatter for line chart

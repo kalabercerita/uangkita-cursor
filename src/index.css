@@ -37,13 +37,13 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47.4% 11.2%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 47.4% 11.2%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 47.4% 11.2%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 176 46% 47%;
@@ -75,11 +75,27 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  .dark body {
+    @apply bg-background text-foreground;
+  }
+  
+  .dark .card {
+    @apply bg-card text-card-foreground;
+  }
+  
+  .dark .sidebar {
+    @apply bg-card border-border;
+  }
 }
 
 @layer components {
   .finance-card {
     @apply bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow duration-300;
+  }
+  
+  .dark .finance-card {
+    @apply bg-card text-card-foreground;
   }
   
   .balance-card {
@@ -92,5 +108,9 @@
   
   .expense-value {
     @apply text-finance-red font-semibold;
+  }
+  
+  .floating-action-button {
+    @apply fixed bottom-6 right-6 bg-gradient-to-r from-finance-teal to-finance-purple text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-50;
   }
 }

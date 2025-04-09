@@ -72,6 +72,7 @@ export const getReportOperation = (
       };
     }
     
+    // Handle income as positive and expense as negative
     if (transaction.type === 'income') {
       groups[category.id].amount += transaction.amount;
     } else if (transaction.type === 'expense') {
@@ -83,7 +84,8 @@ export const getReportOperation = (
   
   // Calculate percentages
   const categorySummary = Object.values(categoryGroups).map(group => {
-    const total = group.amount > 0 ? totalIncome : totalExpense;
+    // For percentage calculation, use absolute value of the relevant total
+    const total = group.amount > 0 ? totalIncome : Math.abs(totalExpense);
     return {
       ...group,
       percentage: Math.abs(total > 0 ? (group.amount / total) * 100 : 0),
@@ -93,8 +95,8 @@ export const getReportOperation = (
   return {
     period,
     totalIncome,
-    totalExpense,
-    balance: totalIncome - totalExpense,
+    totalExpense, // This is positive for consistency with the API
+    balance: totalIncome - totalExpense, // Calculate balance as income minus expense
     categorySummary: categorySummary.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)),
   };
 };

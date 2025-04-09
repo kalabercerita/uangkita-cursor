@@ -22,7 +22,7 @@ const Wallets = () => {
     }).format(amount);
   };
   
-  // Calculate total assets
+  // Calculate total assets (sum of all wallet balances)
   const totalAssets = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
   
   return (

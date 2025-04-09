@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -194,7 +195,7 @@ const Reports = () => {
       return {
         date: format(interval, formatStr, { locale: id }),
         income,
-        expense: expense * -1, // Convert expense to negative for visualization
+        expense, // Changed: Now keeping expense as positive value for display
         balance: income - expense
       };
     });
@@ -255,7 +256,11 @@ const Reports = () => {
   const comparisonData = generateMonthComparisonData();
   
   // Custom tooltip formatter for line chart
-  const lineChartTooltipFormatter = (value: number) => {
+  const lineChartTooltipFormatter = (value: number, name: string) => {
+    // For expenses, show as negative in tooltip but with proper formatting
+    if (name === "Pengeluaran") {
+      return formatCurrency(-Math.abs(value));
+    }
     return formatCurrency(value);
   };
 

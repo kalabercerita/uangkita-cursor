@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { Category } from '@/types';
 
 const Settings = () => {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -44,8 +45,13 @@ const Settings = () => {
   const [currency, setCurrency] = useState<string>('IDR');
   const { categories, addCategory, updateCategory, deleteCategory } = useFinance();
   
-  // New category state
-  const [newCategory, setNewCategory] = useState({
+  // New category state - Fix: specify type as "income" | "expense" instead of string
+  const [newCategory, setNewCategory] = useState<{
+    name: string;
+    type: "income" | "expense";
+    color: string;
+    icon: string;
+  }>({
     name: '',
     type: 'expense',
     color: '#48BB78',
@@ -53,7 +59,7 @@ const Settings = () => {
   });
   
   // Edit category state
-  const [editCategory, setEditCategory] = useState<any>(null);
+  const [editCategory, setEditCategory] = useState<Category | null>(null);
   
   // App version
   const appVersion = "1.0.0.2";
@@ -221,7 +227,7 @@ const Settings = () => {
           </CardContent>
         </Card>
         
-        {/* New Category Management Card */}
+        {/* Category Management Card */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -249,7 +255,7 @@ const Settings = () => {
                   <Label htmlFor="cat-type">Tipe</Label>
                   <Select 
                     value={newCategory.type} 
-                    onValueChange={(value) => setNewCategory({...newCategory, type: value})}
+                    onValueChange={(value: "income" | "expense") => setNewCategory({...newCategory, type: value})}
                   >
                     <SelectTrigger id="cat-type">
                       <SelectValue placeholder="Pilih tipe" />
@@ -343,7 +349,11 @@ const Settings = () => {
                           <div className="flex justify-end space-x-2">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => setEditCategory(category)}
+                                >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>
@@ -351,76 +361,84 @@ const Settings = () => {
                                 <DialogHeader>
                                   <DialogTitle>Edit Kategori</DialogTitle>
                                 </DialogHeader>
-                                <div className="grid gap-4 py-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-name">Nama</Label>
-                                    <Input 
-                                      id="edit-name"
-                                      value={editCategory?.name || category.name}
-                                      onChange={(e) => setEditCategory({...category, name: e.target.value})}
-                                    />
+                                {editCategory && (
+                                  <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                      <Label htmlFor="edit-name">Nama</Label>
+                                      <Input 
+                                        id="edit-name"
+                                        value={editCategory.name}
+                                        onChange={(e) => setEditCategory({...editCategory, name: e.target.value})}
+                                      />
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <Label htmlFor="edit-type">Tipe</Label>
+                                      <Select 
+                                        value={editCategory.type}
+                                        onValueChange={(value: "income" | "expense") => 
+                                          setEditCategory({...editCategory, type: value})
+                                        }
+                                      >
+                                        <SelectTrigger id="edit-type">
+                                          <SelectValue placeholder="Pilih tipe" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="income">Pemasukan</SelectItem>
+                                          <SelectItem value="expense">Pengeluaran</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <Label htmlFor="edit-color">Warna</Label>
+                                      <Select 
+                                        value={editCategory.color || '#48BB78'}
+                                        onValueChange={(value) => 
+                                          setEditCategory({...editCategory, color: value})
+                                        }
+                                      >
+                                        <SelectTrigger id="edit-color">
+                                          <SelectValue placeholder="Pilih warna" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {colorOptions.map(color => (
+                                            <SelectItem key={color.value} value={color.value}>
+                                              <div className="flex items-center">
+                                                <div 
+                                                  className="w-4 h-4 rounded-full mr-2" 
+                                                  style={{backgroundColor: color.value}}
+                                                />
+                                                <span>{color.label}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <Label htmlFor="edit-icon">Ikon</Label>
+                                      <Select 
+                                        value={editCategory.icon || 'tag'}
+                                        onValueChange={(value) => 
+                                          setEditCategory({...editCategory, icon: value})
+                                        }
+                                      >
+                                        <SelectTrigger id="edit-icon">
+                                          <SelectValue placeholder="Pilih ikon" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {iconOptions.map(icon => (
+                                            <SelectItem key={icon.value} value={icon.value}>
+                                              {icon.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                   </div>
-                                  
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-type">Tipe</Label>
-                                    <Select 
-                                      defaultValue={category.type}
-                                      onValueChange={(value) => setEditCategory({...category, type: value})}
-                                    >
-                                      <SelectTrigger id="edit-type">
-                                        <SelectValue placeholder="Pilih tipe" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="income">Pemasukan</SelectItem>
-                                        <SelectItem value="expense">Pengeluaran</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-color">Warna</Label>
-                                    <Select 
-                                      defaultValue={category.color}
-                                      onValueChange={(value) => setEditCategory({...category, color: value})}
-                                    >
-                                      <SelectTrigger id="edit-color">
-                                        <SelectValue placeholder="Pilih warna" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {colorOptions.map(color => (
-                                          <SelectItem key={color.value} value={color.value}>
-                                            <div className="flex items-center">
-                                              <div 
-                                                className="w-4 h-4 rounded-full mr-2" 
-                                                style={{backgroundColor: color.value}}
-                                              />
-                                              <span>{color.label}</span>
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-icon">Ikon</Label>
-                                    <Select 
-                                      defaultValue={category.icon}
-                                      onValueChange={(value) => setEditCategory({...category, icon: value})}
-                                    >
-                                      <SelectTrigger id="edit-icon">
-                                        <SelectValue placeholder="Pilih ikon" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {iconOptions.map(icon => (
-                                          <SelectItem key={icon.value} value={icon.value}>
-                                            {icon.label}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
+                                )}
                                 <DialogFooter>
                                   <Button 
                                     variant="outline" 
@@ -430,10 +448,7 @@ const Settings = () => {
                                     Batal
                                   </Button>
                                   <Button 
-                                    onClick={() => {
-                                      handleUpdateCategory();
-                                      setEditCategory({...category});
-                                    }}
+                                    onClick={handleUpdateCategory}
                                   >
                                     <Check className="mr-2 h-4 w-4" />
                                     Simpan

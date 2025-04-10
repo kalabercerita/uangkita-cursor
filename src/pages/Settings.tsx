@@ -25,7 +25,8 @@ import {
   Trash, 
   Edit,
   Check,
-  X
+  X,
+  Tag
 } from 'lucide-react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { 
@@ -45,7 +46,7 @@ const Settings = () => {
   const [currency, setCurrency] = useState<string>('IDR');
   const { categories, addCategory, updateCategory, deleteCategory } = useFinance();
   
-  // New category state - Fix: specify type as "income" | "expense" instead of string
+  // New category state - with proper typing for "income" | "expense"
   const [newCategory, setNewCategory] = useState<{
     name: string;
     type: "income" | "expense";
@@ -227,11 +228,11 @@ const Settings = () => {
           </CardContent>
         </Card>
         
-        {/* Category Management Card */}
-        <Card className="md:col-span-2">
+        {/* Category Management Card - Resized to be narrower */}
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
+              <Tag className="h-5 w-5" />
               Manajemen Kategori
             </CardTitle>
             <CardDescription>
@@ -240,7 +241,7 @@ const Settings = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cat-name">Nama Kategori</Label>
                   <Input 
@@ -327,7 +328,6 @@ const Settings = () => {
                       <TableHead>Nama</TableHead>
                       <TableHead>Tipe</TableHead>
                       <TableHead>Warna</TableHead>
-                      <TableHead>Ikon</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -344,7 +344,6 @@ const Settings = () => {
                             style={{backgroundColor: category.color}}
                           />
                         </TableCell>
-                        <TableCell>{category.icon}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
                             <Dialog>

@@ -25,6 +25,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
   // Load image when URL changes
   useEffect(() => {
@@ -32,7 +33,34 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
     
     const img = new Image();
     img.onload = () => {
-      // Once image is loaded, create an img element for cropping
+      // Once image is loaded, set dimensions for proper initialization
+      setImageDimensions({ width: img.width, height: img.height });
+      
+      // Center the image initially
+      if (canvasRef.current) {
+        const canvasSize = canvasRef.current.width;
+        const imgAspect = img.width / img.height;
+        
+        let scaledWidth, scaledHeight;
+        
+        if (imgAspect > 1) {
+          // Landscape image
+          scaledHeight = canvasSize;
+          scaledWidth = scaledHeight * imgAspect;
+        } else {
+          // Portrait image or square
+          scaledWidth = canvasSize;
+          scaledHeight = scaledWidth / imgAspect;
+        }
+        
+        // Calculate the initial position to center the image
+        setPosition({
+          x: (canvasSize - scaledWidth) / 2,
+          y: (canvasSize - scaledHeight) / 2
+        });
+      }
+      
+      // Set image source for the reference element
       if (imageRef.current) {
         imageRef.current.src = imageUrl;
       }
@@ -43,7 +71,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   // Draw the cropping preview whenever scale or position changes
   useEffect(() => {
     drawCanvas();
-  }, [scale, position]);
+  }, [scale, position, imageDimensions]);
 
   const drawCanvas = () => {
     if (!canvasRef.current || !imageRef.current || !imageRef.current.complete) return;
@@ -69,6 +97,25 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       // Destination rectangle (with offset for panning)
       position.x, position.y, scaledWidth, scaledHeight
     );
+    
+    // Draw circular crop overlay
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    
+    // Draw circular outline
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -94,6 +141,32 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
 
   const handleMouseUp = () => {
     setDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    setDragging(true);
+    setDragStart({
+      x: touch.clientX - rect.left - position.x,
+      y: touch.clientY - rect.top - position.y
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!dragging || !canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    setPosition({
+      x: touch.clientX - rect.left - dragStart.x,
+      y: touch.clientY - rect.top - dragStart.y
+    });
+    
+    // Prevent page scrolling while dragging
+    e.preventDefault();
   };
 
   const handleCrop = () => {
@@ -128,11 +201,14 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
               ref={canvasRef}
               width={300}
               height={300}
-              className="cursor-move"
+              className="cursor-move touch-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleMouseUp}
             />
           </div>
           
@@ -152,7 +228,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button onClick={handleCrop}>
+            <Button onClick={handleCrop} className="bg-gradient-to-r from-finance-teal to-finance-purple">
               Crop & Simpan
             </Button>
           </div>

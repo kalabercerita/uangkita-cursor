@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import ImageCropper from '@/components/ImageCropper';
 import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updatePassword } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -25,11 +25,17 @@ const Profile = () => {
   const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [tempImageUrl, setTempImageUrl] = useState<string | null>(null);
 
-  // Ambil foto profil dari localStorage saat komponen dimuat
-  React.useEffect(() => {
+  // Load profile image from localStorage when component mounts
+  useEffect(() => {
     const savedImage = localStorage.getItem('profileImage');
     if (savedImage) {
       setProfileImage(savedImage);
+      
+      // Update profile image in session storage for header display
+      sessionStorage.setItem('profileImage', savedImage);
+      
+      // Dispatch a custom event to notify other components of profile image change
+      window.dispatchEvent(new Event('profileImageUpdated'));
     }
   }, []);
 
@@ -57,12 +63,8 @@ const Profile = () => {
     try {
       setIsChangingPassword(true);
       
-      // Implementasi perubahan password dengan Supabase
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      
-      if (error) throw error;
+      // Call the updatePassword function from auth context
+      await updatePassword(currentPassword, newPassword);
       
       toast({
         title: "Berhasil",
@@ -88,7 +90,7 @@ const Profile = () => {
       const reader = new FileReader();
       
       reader.onloadend = () => {
-        // Buka cropper dengan gambar sementara
+        // Open cropper with temporary image
         setTempImageUrl(reader.result as string);
         setIsCropperOpen(true);
       };
@@ -100,10 +102,16 @@ const Profile = () => {
   const handleCroppedImage = (croppedImageUrl: string) => {
     setIsUploading(true);
     
-    // Simpan gambar ke localStorage
     try {
+      // Save cropped image to localStorage
       localStorage.setItem('profileImage', croppedImageUrl);
       setProfileImage(croppedImageUrl);
+      
+      // Also save to sessionStorage for header component
+      sessionStorage.setItem('profileImage', croppedImageUrl);
+      
+      // Dispatch a custom event to notify header of profile image change
+      window.dispatchEvent(new Event('profileImageUpdated'));
       
       toast({
         title: "Berhasil",

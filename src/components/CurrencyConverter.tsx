@@ -1,253 +1,497 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { 
-  Select,
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue
-} from '@/components/ui/select';
-import { ArrowLeftRight, RefreshCw } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RefreshCw, Coins, TrendingUp, DollarSign } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-type Currency = 'IDR' | 'USD' | 'EUR' | 'JPY' | 'SGD' | 'MYR';
-
-interface ExchangeRates {
-  [key: string]: number;
-}
-
-const CurrencyConverter = () => {
-  const [amount, setAmount] = useState<string>('1000000');
-  const [fromCurrency, setFromCurrency] = useState<Currency>('IDR');
-  const [toCurrency, setToCurrency] = useState<Currency>('USD');
-  const [result, setResult] = useState<string>('');
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const FinancialFacilities = () => {
+  // Currency converter state
+  const [amount, setAmount] = useState<string>('1');
+  const [fromCurrency, setFromCurrency] = useState<string>('USD');
+  const [toCurrency, setToCurrency] = useState<string>('IDR');
+  const [convertedAmount, setConvertedAmount] = useState<string>('Loading...');
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Metal prices state
+  const [goldPrice, setGoldPrice] = useState<number | null>(null);
+  const [goldPriceUSD, setGoldPriceUSD] = useState<number | null>(null);
+  const [silverPrice, setSilverPrice] = useState<number | null>(null);
+  const [silverPriceUSD, setSilverPriceUSD] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const { toast } = useToast();
+  
+  // Stock prices state
+  const [stockSymbol, setStockSymbol] = useState<string>('BBCA.JK');
+  const [stockPrice, setStockPrice] = useState<number | null>(null);
+  const [stockChange, setStockChange] = useState<number | null>(null);
+  const [stockName, setStockName] = useState<string>('Bank Central Asia Tbk');
+  const [isLoadingStock, setIsLoadingStock] = useState(false);
+  
+  // Popular Indonesia stock options
+  const stockOptions = [
+    { symbol: 'BBCA.JK', name: 'Bank Central Asia Tbk' },
+    { symbol: 'BBRI.JK', name: 'Bank Rakyat Indonesia' },
+    { symbol: 'BMRI.JK', name: 'Bank Mandiri' },
+    { symbol: 'TLKM.JK', name: 'Telkom Indonesia' },
+    { symbol: 'ASII.JK', name: 'Astra International' },
+    { symbol: 'UNVR.JK', name: 'Unilever Indonesia' },
+    { symbol: 'HMSP.JK', name: 'HM Sampoerna' },
+    { symbol: 'ICBP.JK', name: 'Indofood CBP' },
+    { symbol: 'INDF.JK', name: 'Indofood Sukses Makmur' },
+    { symbol: 'GGRM.JK', name: 'Gudang Garam' },
+  ];
 
-  // Fetch latest exchange rates
-  const fetchExchangeRates = async () => {
-    try {
-      setLoading(true);
-      
-      // Using a free API that doesn't require authentication
-      const response = await fetch('https://open.er-api.com/v6/latest/USD');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch exchange rates');
-      }
-      
-      const data = await response.json();
-      
-      // Ensure we have all currencies we want to use
-      const rates: ExchangeRates = {
-        USD: 1, // Base currency in the API
-        IDR: data.rates.IDR || 15000,
-        EUR: data.rates.EUR || 0.9,
-        JPY: data.rates.JPY || 110,
-        SGD: data.rates.SGD || 1.35,
-        MYR: data.rates.MYR || 4.2
-      };
-      
-      setExchangeRates(rates);
-      setLastUpdated(new Date());
-      setError(null);
-      
-      toast({
-        title: "Kurs Mata Uang Diperbarui",
-        description: "Data kurs mata uang telah diperbarui",
-      });
-    } catch (err) {
-      console.error('Error fetching exchange rates:', err);
-      setError('Failed to load exchange rates. Using fallback rates.');
-      
-      // Fallback rates in case the API fails
-      setExchangeRates({
-        USD: 1,
-        IDR: 15000,
-        EUR: 0.9,
-        JPY: 110,
-        SGD: 1.35,
-        MYR: 4.2
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch exchange rates on load and every hour
+  const currencies = [
+    { code: 'USD', name: 'US Dollar' },
+    { code: 'EUR', name: 'Euro' },
+    { code: 'GBP', name: 'British Pound' },
+    { code: 'JPY', name: 'Japanese Yen' },
+    { code: 'AUD', name: 'Australian Dollar' },
+    { code: 'CAD', name: 'Canadian Dollar' },
+    { code: 'CHF', name: 'Swiss Franc' },
+    { code: 'CNY', name: 'Chinese Yuan' },
+    { code: 'HKD', name: 'Hong Kong Dollar' },
+    { code: 'NZD', name: 'New Zealand Dollar' },
+    { code: 'IDR', name: 'Indonesian Rupiah' },
+    { code: 'MYR', name: 'Malaysian Ringgit' },
+    { code: 'SGD', name: 'Singapore Dollar' },
+    { code: 'KRW', name: 'South Korean Won' },
+    { code: 'INR', name: 'Indian Rupee' }
+  ];
+  
+  // Fetch exchange rates data
   useEffect(() => {
+    const fetchExchangeRates = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Call Exchange Rates API through Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('get-exchange-rates');
+        
+        if (error) {
+          console.error('Error fetching exchange rates:', error);
+          // Fallback to direct API call if edge function fails
+          const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+          const data = await response.json();
+          setExchangeRates(data.rates);
+        } else if (data && data.rates) {
+          setExchangeRates(data.rates);
+        }
+      } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+        // Use mock data as fallback
+        setExchangeRates({
+          USD: 1,
+          EUR: 0.92,
+          GBP: 0.79,
+          JPY: 149.82,
+          IDR: 15750,
+          SGD: 1.34,
+          MYR: 4.73,
+          CNY: 7.24
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
     fetchExchangeRates();
     
-    // Refresh exchange rates every hour
+    // Refresh exchange rates every 60 minutes
     const intervalId = setInterval(fetchExchangeRates, 60 * 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, []);
-
-  const handleConvert = () => {
-    if (!amount || isNaN(Number(amount))) {
-      toast({
-        title: "Input Tidak Valid",
-        description: "Silakan masukkan jumlah yang valid",
-        variant: "destructive"
+  
+  // Fetch gold and silver prices
+  useEffect(() => {
+    const fetchMetalPrices = async () => {
+      try {
+        // Call Metal Prices API through Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('get-metal-prices');
+        
+        if (error) {
+          console.error('Error fetching metal prices:', error);
+        } else if (data) {
+          // Set gold price (per gram in USD)
+          if (data.gold) {
+            setGoldPriceUSD(data.gold / 31.1035); // Convert Troy Ounce to Gram
+          }
+          
+          // Set silver price (per gram in USD)
+          if (data.silver) {
+            setSilverPriceUSD(data.silver / 31.1035); // Convert Troy Ounce to Gram
+          }
+          
+          setLastUpdated(new Date());
+        }
+      } catch (error) {
+        console.error('Error fetching metal prices:', error);
+        // Use mock data as fallback
+        setGoldPriceUSD(64.5);
+        setSilverPriceUSD(0.78);
+        setLastUpdated(new Date());
+      }
+    };
+    
+    fetchMetalPrices();
+    
+    // Refresh metal prices every 60 minutes
+    const intervalId = setInterval(fetchMetalPrices, 60 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Convert metal prices to IDR when USD rates are available
+  useEffect(() => {
+    if (goldPriceUSD && exchangeRates.IDR) {
+      setGoldPrice(goldPriceUSD * exchangeRates.IDR);
+    }
+    
+    if (silverPriceUSD && exchangeRates.IDR) {
+      setSilverPrice(silverPriceUSD * exchangeRates.IDR);
+    }
+  }, [goldPriceUSD, silverPriceUSD, exchangeRates]);
+  
+  // Fetch stock data
+  const fetchStockData = async (symbol: string) => {
+    try {
+      setIsLoadingStock(true);
+      
+      // Call Stock API through Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('get-stock-price', {
+        body: { symbol }
       });
-      return;
+      
+      if (error) {
+        console.error('Error fetching stock data:', error);
+      } else if (data) {
+        setStockPrice(data.price);
+        setStockChange(data.change);
+        
+        // Find stock name from options
+        const stock = stockOptions.find(s => s.symbol === symbol);
+        if (stock) {
+          setStockName(stock.name);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching stock data:', error);
+      // Use mock data as fallback
+      setStockPrice(9000);
+      setStockChange(0.5);
+    } finally {
+      setIsLoadingStock(false);
     }
-
-    if (!exchangeRates) {
-      return;
-    }
-
-    // Convert to USD first (as it's our base rate), then to target currency
-    const amountInUSD = fromCurrency === 'USD' 
-      ? Number(amount) 
-      : Number(amount) / exchangeRates[fromCurrency];
-    
-    const convertedAmount = toCurrency === 'USD'
-      ? amountInUSD
-      : amountInUSD * exchangeRates[toCurrency];
-    
-    setResult(convertedAmount.toLocaleString('id-ID', {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2
-    }));
   };
-
+  
+  // Initialize stock data
+  useEffect(() => {
+    fetchStockData(stockSymbol);
+  }, [stockSymbol]);
+  
+  // Calculate converted amount when dependencies change
+  useEffect(() => {
+    if (!isLoading && Object.keys(exchangeRates).length > 0) {
+      const numAmount = parseFloat(amount) || 0;
+      
+      // Convert through USD as the base currency
+      const toUSD = fromCurrency === 'USD' ? 
+        numAmount : 
+        numAmount / exchangeRates[fromCurrency];
+      
+      const fromUSDToTarget = toCurrency === 'USD' ? 
+        toUSD : 
+        toUSD * exchangeRates[toCurrency];
+      
+      setConvertedAmount(fromUSDToTarget.toFixed(2));
+    }
+  }, [amount, fromCurrency, toCurrency, exchangeRates, isLoading]);
+  
+  // Format currency with proper locale
+  const formatCurrency = (value: number, currency: string, maximumFractionDigits: number = 2) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits
+    }).format(value);
+  };
+  
+  // Handle currency swap
   const handleSwapCurrencies = () => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
-    setResult('');
   };
-
-  const formatCurrency = (currency: Currency, value: string) => {
-    const symbols: Record<Currency, string> = {
-      IDR: 'Rp',
-      USD: '$',
-      EUR: '€',
-      JPY: '¥',
-      SGD: 'S$',
-      MYR: 'RM'
-    };
+  
+  // Format timestamp
+  const formatLastUpdated = (date: Date | null) => {
+    if (!date) return 'Loading...';
     
-    return `${symbols[currency]} ${value}`;
+    return date.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Konversi Mata Uang</CardTitle>
-            <CardDescription>
-              Konversi antar mata uang dengan kurs terkini
-              {loading ? ' (Mengambil data kurs terbaru...)' : ''}
-            </CardDescription>
-          </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={fetchExchangeRates}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="sr-only">Refresh Rates</span>
-          </Button>
-        </div>
+        <CardTitle>Fasilitas Keuangan</CardTitle>
+        <CardDescription>
+          Alat bantu keuangan untuk memantau kurs, harga emas, dan saham
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Jumlah</label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Masukkan jumlah"
-            />
-          </div>
+        <Tabs defaultValue="currency">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="currency">Konversi Mata Uang</TabsTrigger>
+            <TabsTrigger value="metals">Harga Logam Mulia</TabsTrigger>
+            <TabsTrigger value="stocks">Harga Saham</TabsTrigger>
+          </TabsList>
           
-          <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-2">
-            <Select value={fromCurrency} onValueChange={(val) => setFromCurrency(val as Currency)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Dari" />
-              </SelectTrigger>
-              <SelectContent>
-                {exchangeRates && Object.keys(exchangeRates).map((currency) => (
-                  <SelectItem key={currency} value={currency}>
-                    {currency}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Currency Converter Tab */}
+          <TabsContent value="currency" className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="from-amount">Jumlah</Label>
+                <Input
+                  id="from-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="from-currency">Dari</Label>
+                <Select value={fromCurrency} onValueChange={setFromCurrency}>
+                  <SelectTrigger id="from-currency">
+                    <SelectValue placeholder="Pilih mata uang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.code} - {currency.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleSwapCurrencies}
-              className="rounded-full h-8 w-8"
+            <div className="flex justify-center py-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleSwapCurrencies}
+                className="rounded-full"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="to-amount">Hasil Konversi</Label>
+                <Input
+                  id="to-amount"
+                  readOnly
+                  value={isLoading ? "Loading..." : convertedAmount}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="to-currency">Ke</Label>
+                <Select value={toCurrency} onValueChange={setToCurrency}>
+                  <SelectTrigger id="to-currency">
+                    <SelectValue placeholder="Pilih mata uang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.code} - {currency.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="text-sm text-muted-foreground">
+              {isLoading ? (
+                "Memuat kurs mata uang terbaru..."
+              ) : (
+                <>
+                  <div>1 {fromCurrency} = {(exchangeRates[toCurrency] / exchangeRates[fromCurrency]).toFixed(4)} {toCurrency}</div>
+                  <div>1 {toCurrency} = {(exchangeRates[fromCurrency] / exchangeRates[toCurrency]).toFixed(4)} {fromCurrency}</div>
+                </>
+              )}
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              Nilai tukar diperbarui setiap jam.
+            </div>
+          </TabsContent>
+          
+          {/* Metal Prices Tab */}
+          <TabsContent value="metals" className="pt-4">
+            <div className="space-y-4">
+              {/* Gold Card */}
+              <Card className="bg-amber-50">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="bg-amber-200 p-2 rounded-full mr-3">
+                        <Coins className="h-5 w-5 text-amber-800" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">Harga Emas</div>
+                        <div className="text-sm text-muted-foreground">per gram</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-xl">
+                        {goldPrice ? formatCurrency(goldPrice, 'IDR', 0) : 'Loading...'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {goldPriceUSD ? `$${goldPriceUSD.toFixed(2)}/gram` : ''}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Silver Card */}
+              <Card className="bg-gray-50">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="bg-gray-200 p-2 rounded-full mr-3">
+                        <Coins className="h-5 w-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">Harga Perak</div>
+                        <div className="text-sm text-muted-foreground">per gram</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-xl">
+                        {silverPrice ? formatCurrency(silverPrice, 'IDR', 0) : 'Loading...'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {silverPriceUSD ? `$${silverPriceUSD.toFixed(2)}/gram` : ''}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* USD to IDR Exchange Rate */}
+              <Card className="bg-blue-50">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="bg-blue-200 p-2 rounded-full mr-3">
+                        <DollarSign className="h-5 w-5 text-blue-800" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">USD/IDR</div>
+                        <div className="text-sm text-muted-foreground">Kurs Dollar ke Rupiah</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-xl">
+                        {exchangeRates.IDR ? formatCurrency(exchangeRates.IDR, 'IDR', 0) : 'Loading...'}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <div className="text-sm text-muted-foreground">
+                Terakhir diperbarui: {formatLastUpdated(lastUpdated)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Data harga emas dan perak diperbarui setiap jam.
+              </div>
+            </div>
+          </TabsContent>
+          
+          {/* Stock Prices Tab */}
+          <TabsContent value="stocks" className="pt-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="stock-symbol">Pilih Saham</Label>
+              <Select value={stockSymbol} onValueChange={(value) => {
+                setStockSymbol(value);
+                fetchStockData(value);
+              }}>
+                <SelectTrigger id="stock-symbol">
+                  <SelectValue placeholder="Pilih saham" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stockOptions.map((stock) => (
+                    <SelectItem key={stock.symbol} value={stock.symbol}>
+                      {stock.name} ({stock.symbol})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Card className="bg-gray-50">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <div className="bg-gray-200 p-2 rounded-full mr-3">
+                      <TrendingUp className="h-5 w-5 text-gray-600" />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{stockName}</div>
+                      <div className="text-sm text-muted-foreground">{stockSymbol}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-xl">
+                      {isLoadingStock ? 'Loading...' : (
+                        stockPrice ? formatCurrency(stockPrice, 'IDR', 0) : 'N/A'
+                      )}
+                    </div>
+                    {stockChange !== null && (
+                      <div className={`text-sm ${stockChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {stockChange >= 0 ? '+' : ''}{stockChange.toFixed(2)}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Button
+              className="w-full"
+              onClick={() => fetchStockData(stockSymbol)}
+              disabled={isLoadingStock}
             >
-              <ArrowLeftRight className="h-4 w-4" />
-              <span className="sr-only">Tukar Mata Uang</span>
+              {isLoadingStock ? 'Memperbarui...' : 'Perbarui Harga Saham'}
             </Button>
             
-            <Select value={toCurrency} onValueChange={(val) => setToCurrency(val as Currency)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Ke" />
-              </SelectTrigger>
-              <SelectContent>
-                {exchangeRates && Object.keys(exchangeRates).map((currency) => (
-                  <SelectItem key={currency} value={currency}>
-                    {currency}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button 
-            onClick={handleConvert} 
-            className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
-            disabled={loading || !exchangeRates}
-          >
-            Konversi
-          </Button>
-          
-          {result && (
-            <div className="mt-4 p-4 bg-muted rounded-md text-center">
-              <p className="text-sm text-muted-foreground">Hasil Konversi:</p>
-              <p className="text-xl font-bold">
-                {formatCurrency(fromCurrency, amount)} = {formatCurrency(toCurrency, result)}
-              </p>
-              {exchangeRates && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Kurs: 1 {fromCurrency} = {
-                    ((exchangeRates[toCurrency] || 1) / (exchangeRates[fromCurrency] || 1)).toFixed(4)
-                  } {toCurrency}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {lastUpdated 
-                  ? `Data kurs diperbarui pada ${lastUpdated.toLocaleString('id-ID')}` 
-                  : 'Data kurs diperbarui secara berkala'}
-              </p>
+            <div className="text-xs text-muted-foreground">
+              Harga saham pada umumnya tertunda 15 menit dari harga pasar sebenarnya.
             </div>
-          )}
-          
-          {error && (
-            <div className="mt-2 text-sm text-amber-600">
-              {error}
-            </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
 };
 
-export default CurrencyConverter;
+export default FinancialFacilities;

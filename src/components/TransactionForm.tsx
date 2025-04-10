@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, ImagePlus } from 'lucide-react';
+import { Calendar as CalendarIcon, ImagePlus, Camera } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { 
   Select,
@@ -30,9 +30,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinance } from '@/contexts/FinanceContext';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types';
+import ReceiptAnalyzer from './ReceiptAnalyzer';
 
 // Update the schema to allow decimal amounts
 const formSchema = z.object({
@@ -44,7 +46,7 @@ const formSchema = z.object({
   categoryId: z.string({ required_error: 'Silakan pilih kategori' }),
   date: z.date({ required_error: 'Silakan pilih tanggal' }),
   walletId: z.string().optional(),
-  receipt: z.instanceof(File).optional(),
+  receipt: z.any().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -59,6 +61,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
   const { categories, wallets, addTransaction, updateTransaction } = useFinance();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"manual" | "photo">("manual");
+  const [cameraActive, setCameraActive] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
   
   const isEditMode = !!transaction;
   
@@ -111,17 +117,97 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
     }
   };
 
-  const handleAnalyzeReceipt = async () => {
-    const receipt = form.getValues('receipt');
-    if (!receipt) return;
-
+  const startCamera = async () => {
     try {
-      // Here we'd call the AI service to analyze the receipt
-      // This is a placeholder for now
-      alert('AI receipt analysis akan diimplementasikan nanti');
-    } catch (error) {
-      console.error('Error analyzing receipt:', error);
+      if (videoRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        videoRef.current.srcObject = stream;
+        setCameraActive(true);
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("Gagal mengakses kamera. Pastikan kamera perangkat Anda berfungsi dan izin kamera diberikan.");
     }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+      setCameraActive(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (context) {
+        // Set canvas dimensions to match video dimensions
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw video frame on canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert canvas to data URL
+        const imageDataUrl = canvas.toDataURL('image/jpeg');
+        setSelectedImage(imageDataUrl);
+        
+        // Stop camera
+        stopCamera();
+      }
+    }
+  };
+
+  const handleReceiptAnalysisResult = (result: { description: string, amount: number, date?: Date }) => {
+    // Update the form with the AI analysis results
+    form.setValue('description', result.description);
+    form.setValue('amount', result.amount.toString());
+    if (result.date) {
+      form.setValue('date', result.date);
+    }
+    
+    // Set wallet to cash wallet if available
+    const cashWallet = wallets.find(w => w.name.toLowerCase().includes('tunai') || w.name.toLowerCase().includes('cash'));
+    if (cashWallet) {
+      form.setValue('walletId', cashWallet.id);
+    }
+
+    // Find suitable category based on description
+    const lowerDescription = result.description.toLowerCase();
+    
+    // Keywords to identify common expense categories
+    const categoryKeywords: Record<string, string[]> = {
+      "Makanan": ["makanan", "food", "makan", "resto", "restaurant", "cafe", "kafe", "warteg", "warung", "nasi", "mie", "burger", "pizza", "ayam"],
+      "Transportasi": ["transport", "bensin", "BBM", "pertamax", "solar", "parkir", "toll", "busway", "kereta", "train", "bus", "mrt", "grab", "gojek", "ojek", "taxi", "taksi"],
+      "Belanja": ["belanja", "shopping", "toko", "supermarket", "mall", "pasar", "market", "baju", "fashion", "sepatu", "tas", "alfamart", "indomaret", "minimarket"],
+      "Hiburan": ["hiburan", "entertainment", "movie", "film", "bioskop", "cinema", "konser", "concert", "game", "tiket", "ticket"],
+      "Tagihan": ["tagihan", "bill", "listrik", "electricity", "air", "pdam", "internet", "wifi", "pulsa", "telepon", "phone", "gas"],
+      "Kesehatan": ["kesehatan", "health", "dokter", "doctor", "rumah sakit", "hospital", "klinik", "clinic", "obat", "medicine", "apotek"]
+    };
+    
+    // Try to match transaction description with a category
+    let matchedCategory = null;
+    for (const [categoryName, keywords] of Object.entries(categoryKeywords)) {
+      if (keywords.some(keyword => lowerDescription.includes(keyword))) {
+        matchedCategory = categories.find(c => c.name === categoryName && c.type === 'expense');
+        if (matchedCategory) break;
+      }
+    }
+    
+    if (matchedCategory) {
+      form.setValue('categoryId', matchedCategory.id);
+    }
+    
+    // Show success notification to user
+    setActiveTab("manual");
   };
   
   const onSubmit = (values: FormValues) => {
@@ -170,6 +256,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
     }
   };
   
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+  
   return (
     <div className="max-h-[80vh] overflow-y-auto pb-4">
       <Card className="border-0 shadow-none">
@@ -180,256 +273,290 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Jenis Transaksi</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih jenis" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="income">Pemasukan</SelectItem>
-                        <SelectItem value="expense">Pengeluaran</SelectItem>
-                        {/* We can add transfer later if needed */}
-                        {/* <SelectItem value="transfer">Transfer</SelectItem> */}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deskripsi</FormLabel>
-                    <FormControl>
-                      <Input placeholder="mis., Belanja, Gaji" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Jumlah</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        {...field} 
-                        onChange={(e) => {
-                          // Allow only numbers and one decimal point
-                          const value = e.target.value.replace(/[^0-9.,]/g, '');
-                          // Replace comma with dot for decimal
-                          const formattedValue = value.replace(',', '.');
-                          field.onChange(formattedValue);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kategori</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih kategori" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filteredCategories.map(category => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {!walletId && (
-                <FormField
-                  control={form.control}
-                  name="walletId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dompet</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih dompet" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {wallets.map(wallet => (
-                            <SelectItem key={wallet.id} value={wallet.id}>
-                              {wallet.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-              
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Tanggal</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "dd MMMM yyyy")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          className="pointer-events-auto p-3"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Image upload for receipt analysis */}
-              <FormField
-                control={form.control}
-                name="receipt"
-                render={({ field: { value, onChange, ...fieldProps } }) => (
-                  <FormItem>
-                    <FormLabel>Foto Bukti (Opsional)</FormLabel>
-                    <div className="grid gap-2">
-                      <div className="border rounded-md p-4 flex flex-col items-center justify-center gap-2">
-                        {selectedImage ? (
-                          <div className="relative w-full">
-                            <img 
-                              src={selectedImage} 
-                              alt="Receipt preview" 
-                              className="w-full h-auto object-contain max-h-[200px]" 
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => {
-                                setSelectedImage(null);
-                                onChange(undefined);
-                              }}
-                            >
-                              Hapus Foto
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Upload foto untuk analisis transaksi
-                            </p>
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="relative"
-                                onClick={() => document.getElementById('receipt-upload')?.click()}
-                              >
-                                Pilih Foto
-                                <input
-                                  id="receipt-upload"
-                                  type="file"
-                                  accept="image/*"
-                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                  onChange={handleImageChange}
-                                  {...fieldProps}
-                                />
-                              </Button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {selectedImage && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleAnalyzeReceipt}
+          <Tabs defaultValue="manual" value={activeTab} onValueChange={(value) => setActiveTab(value as "manual" | "photo")}>
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="manual" className="flex-1">Input Manual</TabsTrigger>
+              <TabsTrigger value="photo" className="flex-1">Dari Foto</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="manual">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jenis Transaksi</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
                         >
-                          Analisis dengan AI
-                        </Button>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih jenis" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="income">Pemasukan</SelectItem>
+                            <SelectItem value="expense">Pengeluaran</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Deskripsi</FormLabel>
+                        <FormControl>
+                          <Input placeholder="mis., Belanja, Gaji" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jumlah</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0"
+                            {...field} 
+                            onChange={(e) => {
+                              // Allow only numbers and one decimal point
+                              const value = e.target.value.replace(/[^0-9.,]/g, '');
+                              // Replace comma with dot for decimal
+                              const formattedValue = value.replace(',', '.');
+                              field.onChange(formattedValue);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Kategori</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih kategori" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {filteredCategories.map(category => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {!walletId && (
+                    <FormField
+                      control={form.control}
+                      name="walletId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Dompet</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih dompet" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {wallets.map(wallet => (
+                                <SelectItem key={wallet.id} value={wallet.id}>
+                                  {wallet.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
                       )}
+                    />
+                  )}
+                  
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Tanggal</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "dd MMMM yyyy")
+                                ) : (
+                                  <span>Pilih tanggal</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="pointer-events-auto p-3"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting 
+                      ? (isEditMode ? 'Memperbarui...' : 'Menambahkan...') 
+                      : (isEditMode ? 'Perbarui Transaksi' : 'Tambah Transaksi')}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+            
+            <TabsContent value="photo">
+              <div className="space-y-4">
+                {cameraActive ? (
+                  <div className="relative border rounded-md overflow-hidden">
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      className="w-full h-auto"
+                    />
+                    <Button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-full p-3"
+                    >
+                      <div className="w-12 h-12 rounded-full border-4 border-finance-teal flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-finance-teal"></div>
+                      </div>
+                    </Button>
+                  </div>
+                ) : selectedImage ? (
+                  <div className="space-y-3">
+                    <div className="border rounded-md overflow-hidden">
+                      <img 
+                        src={selectedImage}
+                        alt="Captured receipt" 
+                        className="w-full h-auto object-contain"
+                      />
                     </div>
-                    <FormMessage />
-                  </FormItem>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedImage(null);
+                          startCamera();
+                        }}
+                      >
+                        Ambil Ulang
+                      </Button>
+                      
+                      <Button
+                        className="flex-1 bg-gradient-to-r from-finance-teal to-finance-purple"
+                        onClick={() => {
+                          // Process with AI receipt analyzer
+                        }}
+                      >
+                        Gunakan Foto Ini
+                      </Button>
+                    </div>
+                    
+                    <ReceiptAnalyzer 
+                      imageUrl={selectedImage}
+                      onResult={handleReceiptAnalysisResult}
+                    />
+                  </div>
+                ) : (
+                  <div className="border rounded-md p-8 flex flex-col items-center gap-4">
+                    <ImagePlus className="h-12 w-12 text-muted-foreground" />
+                    <p className="text-center text-muted-foreground">
+                      Ambil foto struk atau bukti transaksi untuk menganalisis secara otomatis dengan AI
+                    </p>
+                    
+                    <div className="flex flex-col gap-2 w-full">
+                      <Button
+                        onClick={startCamera}
+                        className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        Ambil Foto
+                      </Button>
+                      
+                      <div className="relative">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => document.getElementById('receipt-upload')?.click()}
+                        >
+                          <ImagePlus className="mr-2 h-4 w-4" />
+                          Pilih dari Galeri
+                        </Button>
+                        <input
+                          id="receipt-upload"
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={handleImageChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 )}
-              />
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
-                disabled={isSubmitting}
-              >
-                {isSubmitting 
-                  ? (isEditMode ? 'Memperbarui...' : 'Menambahkan...') 
-                  : (isEditMode ? 'Perbarui Transaksi' : 'Tambah Transaksi')}
-              </Button>
-            </form>
-          </Form>
+                
+                {/* Hidden canvas for capturing images */}
+                <canvas ref={canvasRef} className="hidden" />
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

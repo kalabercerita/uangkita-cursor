@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, ImagePlus } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { 
   Select,
@@ -34,7 +34,7 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types';
 
-// Update the schema to match the Transaction type
+// Update the schema to allow decimal amounts
 const formSchema = z.object({
   description: z.string().min(2, { message: 'Deskripsi diperlukan' }),
   amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
@@ -44,6 +44,7 @@ const formSchema = z.object({
   categoryId: z.string({ required_error: 'Silakan pilih kategori' }),
   date: z.date({ required_error: 'Silakan pilih tanggal' }),
   walletId: z.string().optional(),
+  receipt: z.instanceof(File).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -57,6 +58,7 @@ interface TransactionFormProps {
 const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction, onSuccess }) => {
   const { categories, wallets, addTransaction, updateTransaction } = useFinance();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const isEditMode = !!transaction;
   
@@ -92,6 +94,35 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
   const filteredCategories = categories.filter(category => 
     (selectedType === 'income' || selectedType === 'expense') ? 
     category.type === selectedType : category.type === 'expense');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      form.setValue('receipt', file);
+      
+      // Show image preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target) {
+          setSelectedImage(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAnalyzeReceipt = async () => {
+    const receipt = form.getValues('receipt');
+    if (!receipt) return;
+
+    try {
+      // Here we'd call the AI service to analyze the receipt
+      // This is a placeholder for now
+      alert('AI receipt analysis akan diimplementasikan nanti');
+    } catch (error) {
+      console.error('Error analyzing receipt:', error);
+    }
+  };
   
   const onSubmit = (values: FormValues) => {
     setIsSubmitting(true);
@@ -99,7 +130,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
     try {
       const transactionData = {
         description: values.description,
-        amount: Number(values.amount),
+        // Ensure amount correctly handles decimal values
+        amount: parseFloat(values.amount.replace(',', '.')),
         type: values.type,
         categoryId: values.categoryId,
         date: values.date,
@@ -125,6 +157,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
           date: new Date(),
           walletId: walletId || '',
         });
+        setSelectedImage(null);
       }
       
       if (onSuccess) {
@@ -198,11 +231,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
                     <FormLabel>Jumlah</FormLabel>
                     <FormControl>
                       <Input 
-                        type="number" 
-                        placeholder="0" 
-                        min="0" 
-                        step="1000" 
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0"
                         {...field} 
+                        onChange={(e) => {
+                          // Allow only numbers and one decimal point
+                          const value = e.target.value.replace(/[^0-9.,]/g, '');
+                          // Replace comma with dot for decimal
+                          const formattedValue = value.replace(',', '.');
+                          field.onChange(formattedValue);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -303,6 +342,78 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
                         />
                       </PopoverContent>
                     </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Image upload for receipt analysis */}
+              <FormField
+                control={form.control}
+                name="receipt"
+                render={({ field: { value, onChange, ...fieldProps } }) => (
+                  <FormItem>
+                    <FormLabel>Foto Bukti (Opsional)</FormLabel>
+                    <div className="grid gap-2">
+                      <div className="border rounded-md p-4 flex flex-col items-center justify-center gap-2">
+                        {selectedImage ? (
+                          <div className="relative w-full">
+                            <img 
+                              src={selectedImage} 
+                              alt="Receipt preview" 
+                              className="w-full h-auto object-contain max-h-[200px]" 
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => {
+                                setSelectedImage(null);
+                                onChange(undefined);
+                              }}
+                            >
+                              Hapus Foto
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              Upload foto untuk analisis transaksi
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="relative"
+                                onClick={() => document.getElementById('receipt-upload')?.click()}
+                              >
+                                Pilih Foto
+                                <input
+                                  id="receipt-upload"
+                                  type="file"
+                                  accept="image/*"
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                  onChange={handleImageChange}
+                                  {...fieldProps}
+                                />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {selectedImage && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleAnalyzeReceipt}
+                        >
+                          Analisis dengan AI
+                        </Button>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

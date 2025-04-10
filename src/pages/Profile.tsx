@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Camera, KeyRound, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigate } from 'react-router-dom';
+import ImageCropper from '@/components/ImageCropper';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -19,6 +22,16 @@ const Profile = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [tempImageUrl, setTempImageUrl] = useState<string | null>(null);
+
+  // Ambil foto profil dari localStorage saat komponen dimuat
+  React.useEffect(() => {
+    const savedImage = localStorage.getItem('profileImage');
+    if (savedImage) {
+      setProfileImage(savedImage);
+    }
+  }, []);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +56,14 @@ const Profile = () => {
 
     try {
       setIsChangingPassword(true);
-      // This is a placeholder - you'll need to implement the real functionality
-      // once connected to a backend like Supabase
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Implementasi perubahan password dengan Supabase
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
       toast({
         title: "Berhasil",
         description: "Kata sandi telah diubah",
@@ -53,13 +71,13 @@ const Profile = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setIsChangingPassword(false);
     } catch (error) {
       toast({
         title: "Gagal",
         description: "Gagal mengubah kata sandi",
         variant: "destructive"
       });
+    } finally {
       setIsChangingPassword(false);
     }
   };
@@ -69,18 +87,37 @@ const Profile = () => {
       const file = e.target.files[0];
       const reader = new FileReader();
       
-      setIsUploading(true);
-      
       reader.onloadend = () => {
-        setProfileImage(reader.result as string);
-        setIsUploading(false);
-        toast({
-          title: "Berhasil",
-          description: "Foto profil telah diperbarui",
-        });
+        // Buka cropper dengan gambar sementara
+        setTempImageUrl(reader.result as string);
+        setIsCropperOpen(true);
       };
       
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCroppedImage = (croppedImageUrl: string) => {
+    setIsUploading(true);
+    
+    // Simpan gambar ke localStorage
+    try {
+      localStorage.setItem('profileImage', croppedImageUrl);
+      setProfileImage(croppedImageUrl);
+      
+      toast({
+        title: "Berhasil",
+        description: "Foto profil telah diperbarui",
+      });
+    } catch (error) {
+      console.error('Error saving profile image:', error);
+      toast({
+        title: "Gagal",
+        description: "Gagal menyimpan foto profil",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -210,6 +247,16 @@ const Profile = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Image Cropper Component */}
+      {tempImageUrl && (
+        <ImageCropper
+          imageUrl={tempImageUrl}
+          onCrop={handleCroppedImage}
+          open={isCropperOpen}
+          onOpenChange={setIsCropperOpen}
+        />
+      )}
     </div>
   );
 };

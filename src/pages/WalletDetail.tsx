@@ -6,11 +6,19 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle,
-  CardDescription 
+  CardDescription,
+  CardFooter 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/contexts/FinanceContext';
-import { ArrowLeftRight, TrendingUp, TrendingDown, Edit } from 'lucide-react';
+import { 
+  ArrowLeftRight, 
+  TrendingUp, 
+  TrendingDown, 
+  Edit, 
+  Trash2,
+  AlertTriangle
+} from 'lucide-react';
 import TransactionForm from '@/components/TransactionForm';
 import WalletEditForm from '@/components/WalletEditForm';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,14 +26,30 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const WalletDetail = () => {
   const { walletId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { wallets, transactions, setCurrentWallet } = useFinance();
+  const { wallets, transactions, setCurrentWallet, deleteWallet } = useFinance();
   const [isEditWalletOpen, setIsEditWalletOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const wallet = wallets.find(w => w.id === walletId);
   
@@ -80,6 +104,28 @@ const WalletDetail = () => {
       day: 'numeric',
     });
   };
+
+  const handleDeleteWallet = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteWallet(walletId!);
+      navigate('/wallets');
+      toast({
+        title: "Dompet dihapus",
+        description: `${wallet.name} telah dihapus`,
+      });
+    } catch (error) {
+      console.error('Error deleting wallet:', error);
+      toast({
+        title: "Gagal menghapus dompet",
+        description: "Terjadi kesalahan saat mencoba menghapus dompet",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteAlertOpen(false);
+    }
+  };
   
   return (
     <div className="space-y-6 py-6 animate-fade-in">
@@ -95,14 +141,17 @@ const WalletDetail = () => {
           </Button>
           <span className={`w-3 h-3 rounded-full bg-${wallet.color || 'finance-teal'}`}></span>
           {wallet.name}
+        </h2>
+        <div className="flex gap-2">
           <Dialog open={isEditWalletOpen} onOpenChange={setIsEditWalletOpen}>
             <DialogTrigger asChild>
               <Button 
                 variant="outline" 
-                size="icon" 
-                className="ml-2"
+                size="sm"
+                className="flex gap-2"
               >
                 <Edit className="h-4 w-4" />
+                Edit
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[400px]">
@@ -112,7 +161,17 @@ const WalletDetail = () => {
               />
             </DialogContent>
           </Dialog>
-        </h2>
+
+          <Button 
+            variant="destructive" 
+            size="sm"
+            className="flex gap-2"
+            onClick={() => setIsDeleteAlertOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Hapus
+          </Button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -210,6 +269,36 @@ const WalletDetail = () => {
           <TransactionForm walletId={walletId} />
         </div>
       </div>
+
+      {/* Alert Dialog for Delete Confirmation */}
+      <AlertDialog
+        open={isDeleteAlertOpen}
+        onOpenChange={setIsDeleteAlertOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Hapus Dompet
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus dompet "{wallet.name}"? 
+              Semua transaksi yang terkait dengan dompet ini juga akan dihapus.
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteWallet}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Menghapus...' : 'Hapus Dompet'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

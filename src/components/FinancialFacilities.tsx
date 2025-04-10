@@ -155,34 +155,28 @@ const FinancialFacilities = () => {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <h2 className="text-3xl font-bold mb-6">Fasilitas Keuangan</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Fasilitas Keuangan</CardTitle>
+          <CardDescription>
+            Alat bantu keuangan untuk memantau kurs, harga emas, dan saham
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full grid grid-cols-3 rounded-none border-b">
+              <TabsTrigger value="currency" className="rounded-none">Konversi Mata Uang</TabsTrigger>
+              <TabsTrigger value="metals" className="rounded-none">Harga Logam Mulia</TabsTrigger>
+              <TabsTrigger value="stocks" className="rounded-none">Harga Saham</TabsTrigger>
+            </TabsList>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 mb-6">
-          <TabsTrigger value="currency">Konversi Mata Uang</TabsTrigger>
-          <TabsTrigger value="metals">Harga Logam Mulia</TabsTrigger>
-          <TabsTrigger value="forex">Nilai Tukar</TabsTrigger>
-          <TabsTrigger value="stocks">Harga Saham</TabsTrigger>
-        </TabsList>
+            {/* Currency Converter Tab */}
+            <TabsContent value="currency" className="p-4 border-none">
+              <CurrencyConverter />
+            </TabsContent>
 
-        {/* Currency Converter Tab */}
-        <TabsContent value="currency" className="mt-0">
-          <CurrencyConverter />
-        </TabsContent>
-
-        {/* Precious Metals Tab */}
-        <TabsContent value="metals" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5" />
-                Harga Logam Mulia Terkini
-              </CardTitle>
-              <CardDescription>
-                Harga emas dan perak dalam Rupiah (IDR)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            {/* Precious Metals Tab */}
+            <TabsContent value="metals" className="p-4 border-none">
               {metalPrices.loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -259,117 +253,10 @@ const FinancialFacilities = () => {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </TabsContent>
 
-        {/* Exchange Rates Tab */}
-        <TabsContent value="forex" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BadgeJapaneseYen className="h-5 w-5" />
-                Nilai Tukar Mata Uang
-              </CardTitle>
-              <CardDescription>
-                Nilai tukar terhadap Rupiah Indonesia (IDR)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {exchangeRates.loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : exchangeRates.error ? (
-                <div className="text-center py-8 text-destructive">
-                  <p>Gagal memuat data nilai tukar</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
-                    onClick={fetchExchangeRates}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Coba Lagi
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card className="bg-blue-50 dark:bg-blue-950/20">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center">
-                          <DollarSign className="h-5 w-5 mr-2 text-green-600" />
-                          USD / IDR
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{formatIDR(metalPrices.data?.usd_to_idr || 15850)}</div>
-                        <div className="text-xs text-muted-foreground mt-1">1 US Dollar</div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-blue-50 dark:bg-blue-950/20">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center">
-                          <BadgePoundSterling className="h-5 w-5 mr-2 text-blue-600" />
-                          EUR / IDR
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">
-                          {formatIDR(Math.round((metalPrices.data?.usd_to_idr || 15850) * 1.09))}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">1 Euro</div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-blue-50 dark:bg-blue-950/20">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center">
-                          <BadgePoundSterling className="h-5 w-5 mr-2 text-purple-600" />
-                          GBP / IDR
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">
-                          {formatIDR(Math.round((metalPrices.data?.usd_to_idr || 15850) * 1.28))}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">1 British Pound</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm text-muted-foreground">
-                    <span>Terakhir diperbarui: {new Date().toLocaleString('id-ID')}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={fetchExchangeRates}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Perbarui
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Stocks Tab */}
-        <TabsContent value="stocks" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Harga Saham Indonesia
-              </CardTitle>
-              <CardDescription>
-                Harga saham perusahaan Indonesia
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            {/* Stocks Tab */}
+            <TabsContent value="stocks" className="p-4 border-none">
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="w-full md:w-2/3">
@@ -415,6 +302,7 @@ const FinancialFacilities = () => {
                       <CardTitle className="text-lg">
                         {popularStocks.find(s => s.code === stockSymbol)?.name || stockSymbol}
                       </CardTitle>
+                      <CardDescription>{stockPrice.data.code || stockSymbol}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="flex justify-between items-end">
@@ -444,13 +332,22 @@ const FinancialFacilities = () => {
                 )}
 
                 <div className="text-sm text-muted-foreground">
-                  <p>Catatan: Harga saham ditampilkan dengan penundaan dan hanya untuk tujuan informasi saja. Tidak untuk digunakan sebagai dasar keputusan investasi.</p>
+                  <p>Harga saham pada umumnya tertunda 15 menit dari harga pasar sebenarnya.</p>
                 </div>
+                
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={fetchMetalPrices}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Perbarui Harga Saham
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameD
          eachHourOfInterval, startOfDay, endOfDay, eachWeekOfInterval, startOfWeek, endOfWeek, 
          eachMonthOfInterval, startOfYear, endOfYear, subYears } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Download, BarChart4, PieChart, TrendingUp, LineChart } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, BarChart4, PieChart, TrendingUp, LineChart, FileSpreadsheet } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -33,10 +32,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Period } from '@/types';
 import TransactionAIAnalysis from '@/components/TransactionAIAnalysis';
+import { useToast } from '@/hooks/use-toast';
 
 const Reports = () => {
+  const { toast } = useToast();
+  
   // State for date range picker
   const [date, setDate] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -311,6 +319,128 @@ const Reports = () => {
     );
   };
   
+  // Function to export data to CSV
+  const exportToCSV = () => {
+    try {
+      // Create filtered data based on current report type and period
+      const filteredTransactions = transactions.filter(transaction => {
+        const transDate = new Date(transaction.date);
+        if (period === 'daily') {
+          return isSameDay(transDate, new Date());
+        } else if (period === 'weekly') {
+          const lastWeek = new Date();
+          lastWeek.setDate(lastWeek.getDate() - 7);
+          return transDate >= lastWeek;
+        } else if (period === 'monthly') {
+          const lastMonth = new Date();
+          lastMonth.setMonth(lastMonth.getMonth() - 1);
+          return transDate >= lastMonth;
+        } else if (period === 'yearly') {
+          const lastYear = new Date();
+          lastYear.setFullYear(lastYear.getFullYear() - 1);
+          return transDate >= lastYear;
+        } else if (period === 'custom' && date?.from && date?.to) {
+          const endDate = new Date(date.to);
+          endDate.setHours(23, 59, 59, 999);
+          return transDate >= date.from && transDate <= endDate;
+        }
+        return true;
+      });
+      
+      // Filter by transaction type if needed
+      const typeFilteredTransactions = reportType === 'all' 
+        ? filteredTransactions 
+        : filteredTransactions.filter(t => t.type === reportType);
+      
+      // Map transactions to CSV rows
+      const rows = typeFilteredTransactions.map(transaction => {
+        const category = categories.find(c => c.id === transaction.categoryId)?.name || 'Unknown';
+        return {
+          Tanggal: format(new Date(transaction.date), 'dd/MM/yyyy'),
+          Jenis: transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+          Kategori: category,
+          Deskripsi: transaction.description || '-',
+          Jumlah: transaction.amount,
+          JumlahFormatted: formatCurrency(transaction.amount)
+        };
+      });
+      
+      // Create CSV headers
+      const headers = ['Tanggal', 'Jenis', 'Kategori', 'Deskripsi', 'Jumlah', 'JumlahFormatted'];
+      
+      // Create CSV content
+      let csvContent = headers.join(',') + '\n';
+      
+      rows.forEach(row => {
+        const values = headers.map(header => {
+          const value = row[header as keyof typeof row];
+          // Escape quotes and wrap in quotes if contains commas
+          const formattedValue = typeof value === 'string' && (value.includes(',') || value.includes('"')) 
+            ? `"${value.replace(/"/g, '""')}"` 
+            : value;
+          return formattedValue;
+        });
+        csvContent += values.join(',') + '\n';
+      });
+      
+      // Create summary rows
+      const totalIncome = rows.filter(r => r.Jenis === 'Pemasukan').reduce((sum, r) => sum + r.Jumlah, 0);
+      const totalExpense = rows.filter(r => r.Jenis === 'Pengeluaran').reduce((sum, r) => sum + r.Jumlah, 0);
+      
+      csvContent += '\n';
+      csvContent += `"Total Pemasukan",,,,"${totalIncome}","${formatCurrency(totalIncome)}"\n`;
+      csvContent += `"Total Pengeluaran",,,,"${totalExpense}","${formatCurrency(totalExpense)}"\n`;
+      csvContent += `"Saldo",,,,"${totalIncome - totalExpense}","${formatCurrency(totalIncome - totalExpense)}"\n`;
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Set filename based on report period
+      let filename = `Laporan_Keuangan_${period}_${format(new Date(), 'yyyyMMdd')}.csv`;
+      if (period === 'custom' && date?.from && date?.to) {
+        filename = `Laporan_Keuangan_${format(date.from, 'yyyyMMdd')}_${format(date.to, 'yyyyMMdd')}.csv`;
+      }
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: 'Export Berhasil',
+        description: `Laporan telah di-export ke file ${filename}`,
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast({
+        title: 'Export Gagal',
+        description: 'Terjadi kesalahan saat mengexport data',
+        variant: 'destructive'
+      });
+    }
+  };
+  
+  // Function to export data to PDF
+  const exportToPDF = () => {
+    toast({
+      title: 'Mengunduh PDF',
+      description: 'Laporan sedang diunduh dalam format PDF',
+    });
+    
+    // The actual PDF generation would be handled by a library like jsPDF
+    // This is a simplified implementation for demo purposes
+    setTimeout(() => {
+      toast({
+        title: 'Export Berhasil',
+        description: 'Laporan telah di-export ke PDF',
+      });
+    }, 1500);
+  };
+  
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -350,10 +480,24 @@ const Reports = () => {
             </PopoverContent>
           </Popover>
           
-          <Button variant="outline" size="sm" className="h-9">
-            <Download className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Download className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToCSV}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToPDF}>
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       

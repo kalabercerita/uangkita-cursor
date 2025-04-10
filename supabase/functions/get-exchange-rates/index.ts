@@ -39,21 +39,21 @@ serve(async (req) => {
       });
     }
     
-    // If API request failed, use updated hardcoded values
+    // If API request failed, use updated hardcoded values based on current Wise rates
     // Updated with more accurate exchange rates (as of April 2025)
     const fallbackRates = {
       USD: 1,
       EUR: 0.92,
-      GBP: 0.79,
-      JPY: 149.82,
-      IDR: 15850, // Updated IDR rate
-      SGD: 1.34,
+      GBP: 0.78,
+      JPY: 151.5,
+      IDR: 16250, // Updated IDR rate to match Wise
+      SGD: 1.35,
       MYR: 4.73,
       CNY: 7.24,
       AUD: 1.52,
-      CAD: 1.38,
+      CAD: 1.36,
       HKD: 7.82,
-      THB: 36.12
+      THB: 35.85
     };
     
     return new Response(JSON.stringify({ 
@@ -66,18 +66,18 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error fetching exchange rates:', error);
     
-    // Return fallback data in case of error
+    // Return fallback data in case of error with Wise approximations
     const fallbackRates = {
       USD: 1,
       EUR: 0.92,
-      GBP: 0.79,
-      JPY: 149.82,
-      IDR: 15850, // Updated IDR rate
-      SGD: 1.34,
+      GBP: 0.78,
+      JPY: 151.5,
+      IDR: 16250, // Updated IDR rate
+      SGD: 1.35,
       MYR: 4.73,
       CNY: 7.24,
       AUD: 1.52,
-      CAD: 1.38
+      CAD: 1.36
     };
     
     return new Response(JSON.stringify({ 

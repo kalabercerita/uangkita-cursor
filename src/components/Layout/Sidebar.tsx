@@ -48,7 +48,7 @@ const Sidebar = () => {
     { name: 'Transaksi', path: '/transactions', icon: ListTodo },
     { name: 'Dompet', path: '/wallets', icon: CreditCard },
     { name: 'Laporan', path: '/reports', icon: BarChart4 },
-    { name: 'Konversi Mata Uang', path: '/currency-converter', icon: ArrowLeftRight },
+    { name: 'Fasilitas Keuangan', path: '/currency-converter', icon: ArrowLeftRight },
     { name: 'Pengaturan', path: '/settings', icon: Settings },
   ];
 

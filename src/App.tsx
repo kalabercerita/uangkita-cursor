@@ -16,7 +16,7 @@ import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import WalletDetail from "./pages/WalletDetail";
 import Profile from "./pages/Profile";
-import CurrencyConverter from "./components/CurrencyConverter";
+import FinancialFacilities from "./components/FinancialFacilities";
 import Wallets from "./pages/Wallets";
 import Settings from "./pages/Settings";
 import Index from "./pages/Index";
@@ -52,7 +52,7 @@ const App = () => {
                 <Route path="/wallet/:walletId" element={<AppLayout><WalletDetail /></AppLayout>} />
                 <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
                 <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
-                <Route path="/currency-converter" element={<AppLayout><CurrencyConverter /></AppLayout>} />
+                <Route path="/currency-converter" element={<AppLayout><FinancialFacilities /></AppLayout>} />
                 
                 <Route path="/index" element={<Index />} />
                 <Route path="*" element={<NotFound />} />

@@ -1,19 +1,59 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun, Moon, Languages, RefreshCw } from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { 
+  Sun, 
+  Moon, 
+  Languages, 
+  RefreshCw, 
+  Plus, 
+  Trash, 
+  Edit,
+  Check,
+  X
+} from 'lucide-react';
+import { useFinance } from '@/contexts/FinanceContext';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 
 const Settings = () => {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const { toast } = useToast();
   const [language, setLanguage] = useState<string>('id');
   const [currency, setCurrency] = useState<string>('IDR');
+  const { categories, addCategory, updateCategory, deleteCategory } = useFinance();
+  
+  // New category state
+  const [newCategory, setNewCategory] = useState({
+    name: '',
+    type: 'expense',
+    color: '#48BB78',
+    icon: 'tag'
+  });
+  
+  // Edit category state
+  const [editCategory, setEditCategory] = useState<any>(null);
   
   // App version
   const appVersion = "1.0.0.2";
@@ -24,6 +64,81 @@ const Settings = () => {
       description: "Fitur ini akan tersedia di versi mendatang",
     });
   };
+  
+  const handleAddCategory = () => {
+    if (!newCategory.name) {
+      toast({
+        title: "Error",
+        description: "Nama kategori tidak boleh kosong",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addCategory(newCategory);
+    setNewCategory({
+      name: '',
+      type: 'expense',
+      color: '#48BB78',
+      icon: 'tag'
+    });
+    
+    toast({
+      title: "Berhasil",
+      description: "Kategori baru telah ditambahkan",
+    });
+  };
+  
+  const handleUpdateCategory = () => {
+    if (!editCategory || !editCategory.name) {
+      toast({
+        title: "Error",
+        description: "Nama kategori tidak boleh kosong",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateCategory(editCategory);
+    setEditCategory(null);
+    
+    toast({
+      title: "Berhasil",
+      description: "Kategori telah diperbarui",
+    });
+  };
+  
+  const handleDeleteCategory = (categoryId: string) => {
+    deleteCategory(categoryId);
+    toast({
+      title: "Berhasil",
+      description: "Kategori telah dihapus",
+    });
+  };
+  
+  const colorOptions = [
+    { value: '#48BB78', label: 'Hijau' },
+    { value: '#F56565', label: 'Merah' },
+    { value: '#4299E1', label: 'Biru' },
+    { value: '#ECC94B', label: 'Kuning' },
+    { value: '#9F7AEA', label: 'Ungu' },
+    { value: '#ED8936', label: 'Oranye' },
+    { value: '#38B2AC', label: 'Teal' },
+  ];
+  
+  const iconOptions = [
+    { value: 'tag', label: 'Tag' },
+    { value: 'shopping-bag', label: 'Belanja' },
+    { value: 'utensils', label: 'Makanan' },
+    { value: 'car', label: 'Transportasi' },
+    { value: 'home', label: 'Rumah' },
+    { value: 'film', label: 'Hiburan' },
+    { value: 'heart', label: 'Kesehatan' },
+    { value: 'file-invoice', label: 'Tagihan' },
+    { value: 'wallet', label: 'Gaji' },
+    { value: 'gift', label: 'Hadiah' },
+    { value: 'chart-line', label: 'Investasi' },
+  ];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -51,7 +166,7 @@ const Settings = () => {
               </Label>
               <Switch 
                 id="dark-mode" 
-                checked={theme === 'dark'}
+                checked={resolvedTheme === 'dark'}
                 onCheckedChange={(checked) => {
                   setTheme(checked ? 'dark' : 'light');
                 }}
@@ -102,6 +217,245 @@ const Settings = () => {
                   <SelectItem value="SGD" disabled>Singapore Dollar (Coming Soon)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* New Category Management Card */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Manajemen Kategori
+            </CardTitle>
+            <CardDescription>
+              Tambah, edit, dan hapus kategori transaksi
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cat-name">Nama Kategori</Label>
+                  <Input 
+                    id="cat-name"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                    placeholder="Nama kategori"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="cat-type">Tipe</Label>
+                  <Select 
+                    value={newCategory.type} 
+                    onValueChange={(value) => setNewCategory({...newCategory, type: value})}
+                  >
+                    <SelectTrigger id="cat-type">
+                      <SelectValue placeholder="Pilih tipe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="income">Pemasukan</SelectItem>
+                      <SelectItem value="expense">Pengeluaran</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="cat-color">Warna</Label>
+                  <Select 
+                    value={newCategory.color} 
+                    onValueChange={(value) => setNewCategory({...newCategory, color: value})}
+                  >
+                    <SelectTrigger id="cat-color">
+                      <SelectValue placeholder="Pilih warna" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colorOptions.map(color => (
+                        <SelectItem key={color.value} value={color.value}>
+                          <div className="flex items-center">
+                            <div 
+                              className="w-4 h-4 rounded-full mr-2" 
+                              style={{backgroundColor: color.value}}
+                            />
+                            <span>{color.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="cat-icon">Ikon</Label>
+                  <Select 
+                    value={newCategory.icon} 
+                    onValueChange={(value) => setNewCategory({...newCategory, icon: value})}
+                  >
+                    <SelectTrigger id="cat-icon">
+                      <SelectValue placeholder="Pilih ikon" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {iconOptions.map(icon => (
+                        <SelectItem key={icon.value} value={icon.value}>
+                          {icon.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <Button onClick={handleAddCategory} className="w-full">
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Kategori
+              </Button>
+            </div>
+            
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold mb-2">Daftar Kategori</h4>
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Tipe</TableHead>
+                      <TableHead>Warna</TableHead>
+                      <TableHead>Ikon</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {categories.map((category) => (
+                      <TableRow key={category.id}>
+                        <TableCell>{category.name}</TableCell>
+                        <TableCell>
+                          {category.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                        </TableCell>
+                        <TableCell>
+                          <div 
+                            className="w-4 h-4 rounded-full" 
+                            style={{backgroundColor: category.color}}
+                          />
+                        </TableCell>
+                        <TableCell>{category.icon}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Kategori</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-name">Nama</Label>
+                                    <Input 
+                                      id="edit-name"
+                                      value={editCategory?.name || category.name}
+                                      onChange={(e) => setEditCategory({...category, name: e.target.value})}
+                                    />
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-type">Tipe</Label>
+                                    <Select 
+                                      defaultValue={category.type}
+                                      onValueChange={(value) => setEditCategory({...category, type: value})}
+                                    >
+                                      <SelectTrigger id="edit-type">
+                                        <SelectValue placeholder="Pilih tipe" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="income">Pemasukan</SelectItem>
+                                        <SelectItem value="expense">Pengeluaran</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-color">Warna</Label>
+                                    <Select 
+                                      defaultValue={category.color}
+                                      onValueChange={(value) => setEditCategory({...category, color: value})}
+                                    >
+                                      <SelectTrigger id="edit-color">
+                                        <SelectValue placeholder="Pilih warna" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {colorOptions.map(color => (
+                                          <SelectItem key={color.value} value={color.value}>
+                                            <div className="flex items-center">
+                                              <div 
+                                                className="w-4 h-4 rounded-full mr-2" 
+                                                style={{backgroundColor: color.value}}
+                                              />
+                                              <span>{color.label}</span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-icon">Ikon</Label>
+                                    <Select 
+                                      defaultValue={category.icon}
+                                      onValueChange={(value) => setEditCategory({...category, icon: value})}
+                                    >
+                                      <SelectTrigger id="edit-icon">
+                                        <SelectValue placeholder="Pilih ikon" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {iconOptions.map(icon => (
+                                          <SelectItem key={icon.value} value={icon.value}>
+                                            {icon.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={() => setEditCategory(null)}
+                                  >
+                                    <X className="mr-2 h-4 w-4" />
+                                    Batal
+                                  </Button>
+                                  <Button 
+                                    onClick={() => {
+                                      handleUpdateCategory();
+                                      setEditCategory({...category});
+                                    }}
+                                  >
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Simpan
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                            
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleDeleteCategory(category.id)}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </CardContent>
         </Card>

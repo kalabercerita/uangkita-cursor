@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ReloadIcon } from 'lucide-react';
+import { LoaderIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 import { getReportOperation } from '@/contexts/finance/reportOperations';
@@ -173,7 +172,7 @@ const Reports = () => {
                 <div>
                   <Label htmlFor="start-date">Tanggal Mulai</Label>
                   <DatePicker 
-                    selected={startDate} 
+                    date={startDate} 
                     onSelect={setStartDate}
                     disabled={loading}
                   />
@@ -181,13 +180,13 @@ const Reports = () => {
                 <div>
                   <Label htmlFor="end-date">Tanggal Akhir</Label>
                   <DatePicker 
-                    selected={endDate} 
+                    date={endDate} 
                     onSelect={setEndDate}
                     disabled={loading}
                   />
                 </div>
                 <Button onClick={generateReport} disabled={loading}>
-                  {loading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
+                  {loading && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
                   Terapkan
                 </Button>
               </div>

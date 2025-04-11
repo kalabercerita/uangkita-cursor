@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ReloadIcon } from '@radix-ui/react-icons';
+import { ReloadIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 import { getReportOperation } from '@/contexts/finance/reportOperations';

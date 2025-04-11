@@ -20,7 +20,7 @@ interface ReportsExportProps {
 const ReportsExport = ({ data, filename = 'laporan', title = 'Laporan Keuangan' }: ReportsExportProps) => {
   const { toast } = useToast();
   
-  const handleExport = (format: 'csv' | 'pdf') => {
+  const handleExport = async (format: 'csv' | 'pdf') => {
     if (!data || data.length === 0) {
       toast({
         title: 'Data Kosong',
@@ -32,16 +32,32 @@ const ReportsExport = ({ data, filename = 'laporan', title = 'Laporan Keuangan' 
     
     try {
       if (format === 'csv') {
-        exportToCSV(data, filename);
+        const csvBlob = await exportToCSV(data, filename);
+        // Create download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(csvBlob);
+        downloadLink.download = `${filename}.csv`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
         toast({
           title: 'Ekspor Berhasil',
           description: `Laporan telah diekspor ke ${filename}.csv`,
         });
       } else if (format === 'pdf') {
-        exportToPDF(data, filename, title);
+        const pdfBlob = await exportToPDF(data, filename, title);
+        // Create download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(pdfBlob);
+        downloadLink.download = `${filename}.pdf`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
         toast({
-          title: 'Ekspor PDF',
-          description: 'File PDF sedang diproses',
+          title: 'Ekspor Berhasil',
+          description: `Laporan telah diekspor ke ${filename}.pdf`,
         });
       }
     } catch (error) {

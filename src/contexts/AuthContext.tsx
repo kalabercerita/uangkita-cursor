@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { User } from '@/types';
@@ -138,10 +137,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // Get the current site URL for proper redirect
+      const redirectTo = window.location.origin;
+      console.log("Redirecting to:", redirectTo);
+      
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: redirectTo,
+          // Make sure we always get a fresh token
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -149,18 +153,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Google login error:', error);
+        toast({
+          title: "Login gagal",
+          description: `Error: ${error.message}`,
+          variant: "destructive",
+        });
+        throw error;
+      }
       
-      // No need for toast here as we're redirecting to Google
+      // No success toast here as we're redirecting to Google
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google login error:', error);
       toast({
         title: "Login gagal",
-        description: "Gagal login dengan Google",
+        description: "Gagal login dengan Google. Pastikan popup tidak diblokir.",
         variant: "destructive",
       });
-      throw error;
     } finally {
       setIsLoading(false);
     }

@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for exporting data
  */
@@ -16,8 +17,17 @@ export const exportToCSV = (data: any[], filename: string): Promise<Blob> => {
     // Get headers from the first object
     const headers = Object.keys(data[0]);
     
+    // Format headers properly for CSV (capitalize first letter and remove camelCase)
+    const formattedHeaders = headers.map(header => {
+      // Convert camelCase to Title Case with spaces
+      return header
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+    });
+    
     // Create CSV header row
-    let csvContent = headers.join(',') + '\n';
+    let csvContent = formattedHeaders.join(',') + '\n';
     
     // Add data rows
     data.forEach(item => {
@@ -75,6 +85,14 @@ export const exportToPDF = (data: any[], filename: string, title: string = 'Repo
 
     // Get headers from the first object
     const headers = Object.keys(data[0]);
+    
+    // Format headers for display (convert camelCase to Title Case)
+    const formattedHeaders = headers.map(header => {
+      return header
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+    });
     
     // Create a new window for the PDF content
     const printWindow = window.open('', '_blank');
@@ -141,37 +159,14 @@ export const exportToPDF = (data: any[], filename: string, title: string = 'Repo
           #print-btn:hover {
             background-color: #45a049;
           }
-          .auto-print {
-            display: none;
-          }
         </style>
-        <script>
-          // Automatically open print dialog when page loads
-          window.onload = function() {
-            // Small delay to make sure content is fully loaded
-            setTimeout(function() {
-              document.getElementById('print-btn').click();
-            }, 500);
-          };
-          
-          function printAndWait() {
-            window.print();
-            // Keep window open for a moment to allow user to save PDF
-            setTimeout(function() {
-              // Only close if not in focus - allows user to keep it open if they want
-              if (!document.hasFocus()) {
-                window.close();
-              }
-            }, 1000);
-          }
-        </script>
       </head>
       <body>
         <h1>${title}</h1>
         <table>
           <thead>
             <tr>
-              ${headers.map(header => `<th>${header}</th>`).join('')}
+              ${formattedHeaders.map(header => `<th>${header}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -223,18 +218,24 @@ export const exportToPDF = (data: any[], filename: string, title: string = 'Repo
           </tbody>
         </table>
         <div class="footer">Dicetak pada ${new Date().toLocaleString()}</div>
-        <button id="print-btn" onclick="printAndWait()">Cetak / Simpan sebagai PDF</button>
+        <button id="print-btn" onclick="window.print(); setTimeout(() => window.close(), 500)">Cetak / Simpan sebagai PDF</button>
+        <script>
+          // For auto-printing, wait a short time for the content to fully render
+          setTimeout(function() {
+            // Try to trigger the print dialog automatically
+            window.print();
+          }, 500);
+        </script>
       </body>
       </html>
     `;
     
-    // Write to the new window and trigger print
+    // Write to the new window
     printWindow.document.open();
     printWindow.document.write(htmlContent);
     printWindow.document.close();
     
-    // Create a simple blob as placeholder since we're using the print dialog
-    // The actual PDF creation happens in the browser's print dialog
+    // Create a simple blob as placeholder
     const blob = new Blob(['PDF being created in print dialog'], { type: 'application/pdf' });
     resolve(blob);
   });

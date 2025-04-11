@@ -105,41 +105,11 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     try {
       setGoogleError(null);
-      
-      // Get the current origin for proper redirect
-      const currentOrigin = window.location.origin;
-      const redirectTo = `${currentOrigin}/`;
-      
-      console.log("Starting Google login with redirect to:", redirectTo);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectTo,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
-
-      if (error) {
-        console.error('Google OAuth error:', error);
-        setGoogleError(error.message);
-        throw error;
-      }
-      
-      console.log("Google login initiated, data:", data);
-      // No need for toast here as we're redirecting to Google
-      
+      console.log("Starting Google login");
+      await loginWithGoogle();
     } catch (error: any) {
       console.error('Google login error:', error);
       setGoogleError(error?.message || 'Error connecting to Google');
-      toast({
-        title: "Login gagal",
-        description: "Gagal login dengan Google: " + (error?.message || "Kesalahan jaringan"),
-        variant: "destructive",
-      });
     }
   };
   

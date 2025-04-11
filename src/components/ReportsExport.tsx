@@ -31,11 +31,14 @@ const ReportsExport = ({ data, filename = 'laporan', title = 'Laporan Keuangan' 
     }
     
     try {
+      let blob: Blob;
+      
       if (format === 'csv') {
-        const csvBlob = await exportToCSV(data, filename);
-        // Create download link
+        blob = await exportToCSV(data, filename);
+        // Create download link for CSV
+        const url = URL.createObjectURL(blob);
         const downloadLink = document.createElement('a');
-        downloadLink.href = URL.createObjectURL(csvBlob);
+        downloadLink.href = url;
         downloadLink.download = `${filename}.csv`;
         document.body.appendChild(downloadLink);
         downloadLink.click();
@@ -46,18 +49,11 @@ const ReportsExport = ({ data, filename = 'laporan', title = 'Laporan Keuangan' 
           description: `Laporan telah diekspor ke ${filename}.csv`,
         });
       } else if (format === 'pdf') {
-        const pdfBlob = await exportToPDF(data, filename, title);
-        // Create download link
-        const downloadLink = document.createElement('a');
-        downloadLink.href = URL.createObjectURL(pdfBlob);
-        downloadLink.download = `${filename}.pdf`;
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
-        
+        blob = await exportToPDF(data, filename, title);
+        // The actual PDF is created in the print dialog from exportToPDF
         toast({
-          title: 'Ekspor Berhasil',
-          description: `Laporan telah diekspor ke ${filename}.pdf`,
+          title: 'Ekspor PDF Berhasil',
+          description: 'Silakan cetak atau simpan sebagai PDF di jendela yang terbuka',
         });
       }
     } catch (error) {

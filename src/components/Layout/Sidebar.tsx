@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Home,
@@ -37,26 +37,57 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 
+// Settings storage key (must match the one in Settings.tsx)
+const SETTINGS_STORAGE_KEY = 'uangkita_app_settings';
+
 const Sidebar = () => {
   const { wallets } = useFinance();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [showFinancialFacilities, setShowFinancialFacilities] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'Transaksi Baru', message: 'Rp 100.000 ditambahkan ke dompet utama', time: '15 menit yang lalu', read: false },
+    { id: 2, title: 'Pengingat Tagihan', message: 'Tagihan listrik akan jatuh tempo besok', time: '1 jam yang lalu', read: false },
+    { id: 3, title: 'Target Tabungan', message: 'Anda telah mencapai 75% target tabungan', time: '2 hari yang lalu', read: false },
+  ]);
   
-  const navItems = [
+  // Load settings from localStorage on component mount
+  useEffect(() => {
+    try {
+      const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (storedSettings) {
+        const settings = JSON.parse(storedSettings);
+        setShowFinancialFacilities(settings.showFinancialFacilities || false);
+      }
+    } catch (error) {
+      console.error('Error loading app settings:', error);
+      setShowFinancialFacilities(false);
+    }
+  }, []);
+  
+  // Get unread notification count
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Base nav items without Financial Facilities
+  const baseNavItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Transaksi', path: '/transactions', icon: ListTodo },
     { name: 'Dompet', path: '/wallets', icon: CreditCard },
     { name: 'Laporan', path: '/reports', icon: BarChart4 },
-    { name: 'Fasilitas Keuangan', path: '/currency-converter', icon: ArrowLeftRight },
     { name: 'Pengaturan', path: '/settings', icon: Settings },
   ];
+  
+  // Conditionally add financial facilities based on settings
+  const navItems = showFinancialFacilities 
+    ? [...baseNavItems.slice(0, 4), { name: 'Fasilitas Keuangan', path: '/currency-converter', icon: ArrowLeftRight }, ...baseNavItems.slice(4)]
+    : baseNavItems;
 
-  const notifications = [
-    { id: 1, title: 'Transaksi Baru', message: 'Rp 100.000 ditambahkan ke dompet utama', time: '15 menit yang lalu' },
-    { id: 2, title: 'Pengingat Tagihan', message: 'Tagihan listrik akan jatuh tempo besok', time: '1 jam yang lalu' },
-    { id: 3, title: 'Target Tabungan', message: 'Anda telah mencapai 75% target tabungan', time: '2 hari yang lalu' },
-  ];
+  // Mark all notifications as read
+  const handleOpenNotifications = () => {
+    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    setIsNotificationOpen(true);
+  };
 
   const sidebarContent = (
     <>
@@ -216,11 +247,16 @@ const Sidebar = () => {
               </DrawerContent>
             </Drawer>
 
-            {/* Notifications */}
+            {/* Notifications with unread count */}
             <Drawer>
               <DrawerTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="relative" onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}>
                   <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-finance-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Button>
               </DrawerTrigger>
               <DrawerContent>
@@ -284,11 +320,21 @@ const Sidebar = () => {
             </DialogContent>
           </Dialog>
           
-          {/* Notifications */}
+          {/* Notifications with unread count */}
           <Dialog open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative"
+                onClick={handleOpenNotifications}
+              >
                 <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-finance-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[400px]">

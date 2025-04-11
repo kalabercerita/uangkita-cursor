@@ -10,7 +10,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, allowDecimals = false, decimalSeparator = '.', maxDecimals = 3, ...props }, ref) => {
+  ({ className, type, allowDecimals = true, decimalSeparator = '.', maxDecimals = 3, ...props }, ref) => {
     // Handle number inputs with decimal support
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       if (type === 'number' && allowDecimals && event.target.value) {

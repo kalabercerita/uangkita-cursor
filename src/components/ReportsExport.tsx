@@ -41,7 +41,7 @@ const ReportsExport = ({ data, filename = 'laporan', title = 'Laporan Keuangan' 
         exportToPDF(data, filename, title);
         toast({
           title: 'Ekspor PDF',
-          description: 'Silakan simpan laporan menggunakan dialog cetak',
+          description: 'File PDF sedang diproses',
         });
       }
     } catch (error) {

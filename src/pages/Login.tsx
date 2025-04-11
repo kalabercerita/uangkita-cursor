@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,12 +33,14 @@ const resetPasswordFormSchema = z.object({
 });
 
 const Login = () => {
+  const location = useLocation();
   const { login, loginWithGoogle, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [activeTab, setActiveTab] = useState<"login" | "reset">("login");
+  const [googleError, setGoogleError] = useState<string | null>(null);
   
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
@@ -102,16 +104,61 @@ const Login = () => {
   
   const handleGoogleLogin = async () => {
     try {
-      await loginWithGoogle();
-    } catch (error) {
+      setGoogleError(null);
+      
+      // Get the current origin for proper redirect
+      const currentOrigin = window.location.origin;
+      const redirectTo = `${currentOrigin}/`;
+      
+      console.log("Starting Google login with redirect to:", redirectTo);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        setGoogleError(error.message);
+        throw error;
+      }
+      
+      console.log("Google login initiated, data:", data);
+      // No need for toast here as we're redirecting to Google
+      
+    } catch (error: any) {
       console.error('Google login error:', error);
+      setGoogleError(error?.message || 'Error connecting to Google');
       toast({
         title: "Login gagal",
-        description: "Terjadi kesalahan saat mencoba login dengan Google",
+        description: "Gagal login dengan Google: " + (error?.message || "Kesalahan jaringan"),
         variant: "destructive",
       });
     }
   };
+  
+  // Check for error in URL params (after returning from Google auth)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+    
+    if (error) {
+      console.error('OAuth error from URL:', error, errorDescription);
+      setGoogleError(errorDescription || 'Error connecting to Google');
+      toast({
+        title: "Login gagal",
+        description: errorDescription || "Terjadi masalah dengan autentikasi Google",
+        variant: "destructive",
+      });
+    }
+  }, [location, toast]);
   
   // Redirect if already logged in
   if (isAuthenticated && !isLoading) {
@@ -140,6 +187,16 @@ const Login = () => {
                   <AlertDescription>
                     Kami telah mengirimkan email konfirmasi ke alamat email Anda. 
                     Silakan cek inbox atau folder spam dan klik link konfirmasi untuk menyelesaikan proses login.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {googleError && (
+                <Alert className="mb-4 bg-red-50 text-red-800 border-red-200">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Login Google Gagal</AlertTitle>
+                  <AlertDescription>
+                    {googleError}
                   </AlertDescription>
                 </Alert>
               )}

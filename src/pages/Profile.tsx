@@ -37,6 +37,21 @@ const Profile = () => {
       // Dispatch a custom event to notify other components of profile image change
       window.dispatchEvent(new Event('profileImageUpdated'));
     }
+    
+    // Listen for profileImageUpdated events from other tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'profileImage' && e.newValue) {
+        setProfileImage(e.newValue);
+        sessionStorage.setItem('profileImage', e.newValue);
+        window.dispatchEvent(new Event('profileImageUpdated'));
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -126,6 +141,7 @@ const Profile = () => {
       });
     } finally {
       setIsUploading(false);
+      setIsCropperOpen(false);
     }
   };
 

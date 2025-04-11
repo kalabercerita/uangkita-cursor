@@ -271,7 +271,7 @@ const FinancialFacilities = () => {
                       <SelectTrigger id="stock-symbol">
                         <SelectValue placeholder="Pilih perusahaan" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="w-full bg-white z-50">
                         {popularStocks.map(stock => (
                           <SelectItem key={stock.code} value={stock.code}>
                             {stock.name} ({stock.code})
@@ -338,7 +338,7 @@ const FinancialFacilities = () => {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={fetchMetalPrices}
+                  onClick={() => fetchStockPrice(stockSymbol)}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Perbarui Harga Saham

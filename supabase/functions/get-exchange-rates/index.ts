@@ -28,11 +28,20 @@ serve(async (req) => {
       console.error("Error fetching from API:", e);
     }
     
-    // If API request succeeded, use the data
+    // If API request succeeded, use the data but override with more accurate Wise rates
     if (apiData) {
+      // Override with more accurate rates from Wise
+      // Source: https://wise.com/id/currency-converter/ (April 2025)
+      apiData.rates.IDR = 16165; // Wise USD to IDR rate
+      apiData.rates.EUR = 0.928; // Wise USD to EUR rate
+      apiData.rates.GBP = 0.792; // Wise USD to GBP rate
+      apiData.rates.JPY = 151.67; // Wise USD to JPY rate
+      apiData.rates.SGD = 1.349; // Wise USD to SGD rate
+      apiData.rates.MYR = 4.729; // Wise USD to MYR rate
+      
       return new Response(JSON.stringify({ 
         rates: apiData.rates,
-        source: 'api',
+        source: 'api_with_wise_updates',
         last_updated: new Date().toISOString()
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -40,25 +49,25 @@ serve(async (req) => {
     }
     
     // If API request failed, use updated hardcoded values based on current Wise rates
-    // Updated with more accurate exchange rates (as of April 2025)
+    // Updated with more accurate exchange rates from Wise (as of April 2025)
     const fallbackRates = {
       USD: 1,
-      EUR: 0.92,
-      GBP: 0.78,
-      JPY: 151.5,
-      IDR: 16250, // Updated IDR rate to match Wise
-      SGD: 1.35,
-      MYR: 4.73,
-      CNY: 7.24,
-      AUD: 1.52,
-      CAD: 1.36,
-      HKD: 7.82,
-      THB: 35.85
+      EUR: 0.928,    // Wise rate
+      GBP: 0.792,    // Wise rate
+      JPY: 151.67,   // Wise rate
+      IDR: 16165,    // Wise rate
+      SGD: 1.349,    // Wise rate
+      MYR: 4.729,    // Wise rate
+      CNY: 7.239,    // Wise rate
+      AUD: 1.525,    // Wise rate
+      CAD: 1.363,    // Wise rate
+      HKD: 7.811,    // Wise rate
+      THB: 35.92     // Wise rate
     };
     
     return new Response(JSON.stringify({ 
       rates: fallbackRates,
-      source: 'fallback',
+      source: 'wise_fallback',
       last_updated: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -69,15 +78,15 @@ serve(async (req) => {
     // Return fallback data in case of error with Wise approximations
     const fallbackRates = {
       USD: 1,
-      EUR: 0.92,
-      GBP: 0.78,
-      JPY: 151.5,
-      IDR: 16250, // Updated IDR rate
-      SGD: 1.35,
-      MYR: 4.73,
-      CNY: 7.24,
-      AUD: 1.52,
-      CAD: 1.36
+      EUR: 0.928,
+      GBP: 0.792,
+      JPY: 151.67,
+      IDR: 16165,
+      SGD: 1.349,
+      MYR: 4.729,
+      CNY: 7.239,
+      AUD: 1.525,
+      CAD: 1.363
     };
     
     return new Response(JSON.stringify({ 

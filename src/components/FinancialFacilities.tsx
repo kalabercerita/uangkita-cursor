@@ -11,6 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CurrencyConverter from './CurrencyConverter';
 
+// Settings storage key (must match the one in Settings.tsx)
+const SETTINGS_STORAGE_KEY = 'uangkita_app_settings';
+
 const FinancialFacilities = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>('currency');
@@ -30,6 +33,7 @@ const FinancialFacilities = () => {
     data: null,
     error: null
   });
+  const [showFeature, setShowFeature] = useState<boolean>(false);
 
   // Popular Indonesian stocks
   const popularStocks = [
@@ -44,6 +48,30 @@ const FinancialFacilities = () => {
     { code: 'INDF.JK', name: 'Indofood Sukses Makmur' },
     { code: 'GGRM.JK', name: 'Gudang Garam' },
   ];
+
+  // Check if the feature should be shown
+  useEffect(() => {
+    try {
+      const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (storedSettings) {
+        const settings = JSON.parse(storedSettings);
+        setShowFeature(settings.showFinancialFacilities || false);
+      } else {
+        setShowFeature(false); // Default to hidden
+      }
+    } catch (error) {
+      console.error('Error loading app settings:', error);
+      setShowFeature(false);
+    }
+  }, []);
+
+  // Only fetch data if the feature is shown
+  useEffect(() => {
+    if (showFeature) {
+      fetchMetalPrices();
+      fetchExchangeRates();
+    }
+  }, [showFeature]);
 
   // Fetch metal prices
   const fetchMetalPrices = async () => {
@@ -137,12 +165,6 @@ const FinancialFacilities = () => {
     }
   };
 
-  // Load data on initial render
-  useEffect(() => {
-    fetchMetalPrices();
-    fetchExchangeRates();
-  }, []);
-
   // Format prices with IDR
   const formatIDR = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -153,15 +175,14 @@ const FinancialFacilities = () => {
     }).format(amount);
   };
 
+  // If feature is hidden based on settings, return null
+  if (!showFeature) {
+    return null;
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto py-6 space-y-6 px-4 sm:px-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Fasilitas Keuangan</CardTitle>
-          <CardDescription>
-            Alat bantu keuangan untuk memantau kurs, harga emas, dan saham
-          </CardDescription>
-        </CardHeader>
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full grid grid-cols-3 rounded-none border-b">

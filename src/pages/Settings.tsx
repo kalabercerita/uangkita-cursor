@@ -26,7 +26,8 @@ import {
   Edit,
   Check,
   X,
-  Tag
+  Tag,
+  DollarSign
 } from 'lucide-react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { 
@@ -39,12 +40,28 @@ import {
 } from '@/components/ui/table';
 import { Category } from '@/types';
 
+// Create a new type for app settings
+type AppSettings = {
+  showFinancialFacilities: boolean;
+}
+
+// Default app settings
+const defaultSettings: AppSettings = {
+  showFinancialFacilities: false
+};
+
+// Create a settings key for localStorage
+const SETTINGS_STORAGE_KEY = 'uangkita_app_settings';
+
 const Settings = () => {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { toast } = useToast();
   const [language, setLanguage] = useState<string>('id');
   const [currency, setCurrency] = useState<string>('IDR');
   const { categories, addCategory, updateCategory, deleteCategory } = useFinance();
+  
+  // App settings state
+  const [appSettings, setAppSettings] = useState<AppSettings>(defaultSettings);
   
   // New category state - with proper typing for "income" | "expense"
   const [newCategory, setNewCategory] = useState<{
@@ -63,7 +80,45 @@ const Settings = () => {
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   
   // App version
-  const appVersion = "1.0.0.2";
+  const appVersion = "1.0.0.3";
+
+  // Load app settings from localStorage on component mount
+  useEffect(() => {
+    const loadSettings = () => {
+      try {
+        const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (storedSettings) {
+          setAppSettings(JSON.parse(storedSettings));
+        }
+      } catch (error) {
+        console.error('Error loading app settings:', error);
+        // If there's an error, use default settings
+        setAppSettings(defaultSettings);
+      }
+    };
+    
+    loadSettings();
+  }, []);
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
+  }, [appSettings]);
+
+  // Handle toggle for financial facilities visibility
+  const handleToggleFinancialFacilities = (checked: boolean) => {
+    setAppSettings(prev => ({
+      ...prev,
+      showFinancialFacilities: checked
+    }));
+    
+    toast({
+      title: checked ? "Fasilitas Keuangan Ditampilkan" : "Fasilitas Keuangan Disembunyikan",
+      description: checked 
+        ? "Fasilitas keuangan akan ditampilkan di aplikasi" 
+        : "Fasilitas keuangan akan disembunyikan di aplikasi",
+    });
+  };
 
   const handleResetData = () => {
     toast({
@@ -179,6 +234,20 @@ const Settings = () => {
                 }}
               />
             </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-financial-facilities" className="flex flex-col space-y-1">
+                <span>Tampilkan Fasilitas Keuangan</span>
+                <span className="font-normal text-sm text-muted-foreground">
+                  Tampilkan menu fasilitas keuangan di aplikasi
+                </span>
+              </Label>
+              <Switch 
+                id="show-financial-facilities" 
+                checked={appSettings.showFinancialFacilities}
+                onCheckedChange={handleToggleFinancialFacilities}
+              />
+            </div>
           </CardContent>
         </Card>
         
@@ -229,7 +298,7 @@ const Settings = () => {
         </Card>
         
         {/* Category Management Card - Resized to be narrower */}
-        <Card>
+        <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5" />

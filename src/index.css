@@ -104,6 +104,36 @@
   .dark .text-muted-foreground {
     color: hsl(var(--muted-foreground));
   }
+  
+  /* Improve mobile view */
+  @media (max-width: 640px) {
+    .container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    
+    /* Fix scrolling issues on mobile */
+    .overflow-y-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Fix input field text size on mobile */
+    input, select, button {
+      font-size: 16px !important; /* Prevent zoom on focus in iOS */
+    }
+    
+    /* Fix dialog positioning on mobile */
+    .dialog-content {
+      width: 95% !important;
+      max-width: 95% !important;
+    }
+    
+    /* Fix popover positioning on mobile */
+    .popover-content {
+      width: auto !important;
+      min-width: 95% !important;
+    }
+  }
 }
 
 @layer components {
@@ -129,5 +159,18 @@
   
   .floating-action-button {
     @apply fixed bottom-6 right-6 bg-gradient-to-r from-finance-teal to-finance-purple text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-50;
+  }
+  
+  /* Fix any overlapping UI in mobile view */
+  .popover-content {
+    @apply z-50;
+  }
+  
+  .select-content {
+    @apply z-50;
+  }
+  
+  .dialog-content {
+    @apply z-50;
   }
 }

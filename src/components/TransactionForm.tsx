@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -36,7 +35,6 @@ import { cn } from '@/lib/utils';
 import { Transaction } from '@/types';
 import ReceiptAnalyzer from './ReceiptAnalyzer';
 
-// Update the schema to allow decimal amounts
 const formSchema = z.object({
   description: z.string().min(2, { message: 'Deskripsi diperlukan' }),
   amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
@@ -93,10 +91,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
     }
   }, [transaction, form]);
   
-  // Filter categories based on selected type
   const selectedType = form.watch('type');
   
-  // Only show income and expense categories (skip transfer for now)
   const filteredCategories = categories.filter(category => 
     (selectedType === 'income' || selectedType === 'expense') ? 
     category.type === selectedType : category.type === 'expense');
@@ -106,7 +102,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
       const file = e.target.files[0];
       form.setValue('receipt', file);
       
-      // Show image preview
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target) {
@@ -149,41 +144,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
       const context = canvas.getContext('2d');
       
       if (context) {
-        // Set canvas dimensions to match video dimensions
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        // Draw video frame on canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Convert canvas to data URL
         const imageDataUrl = canvas.toDataURL('image/jpeg');
         setSelectedImage(imageDataUrl);
         
-        // Stop camera
         stopCamera();
       }
     }
   };
 
   const handleReceiptAnalysisResult = (result: { description: string, amount: number, date?: Date }) => {
-    // Update the form with the AI analysis results
     form.setValue('description', result.description);
     form.setValue('amount', result.amount.toString());
     if (result.date) {
       form.setValue('date', result.date);
     }
     
-    // Set wallet to cash wallet if available
     const cashWallet = wallets.find(w => w.name.toLowerCase().includes('tunai') || w.name.toLowerCase().includes('cash'));
     if (cashWallet) {
       form.setValue('walletId', cashWallet.id);
     }
 
-    // Find suitable category based on description
     const lowerDescription = result.description.toLowerCase();
     
-    // Keywords to identify common expense categories
     const categoryKeywords: Record<string, string[]> = {
       "Makanan": ["makanan", "food", "makan", "resto", "restaurant", "cafe", "kafe", "warteg", "warung", "nasi", "mie", "burger", "pizza", "ayam"],
       "Transportasi": ["transport", "bensin", "BBM", "pertamax", "solar", "parkir", "toll", "busway", "kereta", "train", "bus", "mrt", "grab", "gojek", "ojek", "taxi", "taksi"],
@@ -193,7 +180,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
       "Kesehatan": ["kesehatan", "health", "dokter", "doctor", "rumah sakit", "hospital", "klinik", "clinic", "obat", "medicine", "apotek"]
     };
     
-    // Try to match transaction description with a category
     let matchedCategory = null;
     for (const [categoryName, keywords] of Object.entries(categoryKeywords)) {
       if (keywords.some(keyword => lowerDescription.includes(keyword))) {
@@ -206,7 +192,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
       form.setValue('categoryId', matchedCategory.id);
     }
     
-    // Show success notification to user
     setActiveTab("manual");
   };
   
@@ -216,7 +201,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
     try {
       const transactionData = {
         description: values.description,
-        // Ensure amount correctly handles decimal values
         amount: parseFloat(values.amount.replace(',', '.')),
         type: values.type,
         categoryId: values.categoryId,
@@ -233,7 +217,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
         addTransaction(transactionData);
       }
       
-      // Reset form if not editing
       if (!isEditMode) {
         form.reset({
           description: '',
@@ -256,7 +239,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
     }
   };
   
-  // Cleanup camera on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -334,11 +316,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
                             placeholder="0"
                             {...field} 
                             onChange={(e) => {
-                              // Allow only numbers and one decimal point
-                              const value = e.target.value.replace(/[^0-9.,]/g, '');
-                              // Replace comma with dot for decimal
-                              const formattedValue = value.replace(',', '.');
-                              field.onChange(formattedValue);
+                              const value = e.target.value;
+                              const decimalRegex = /^[0-9]*([.,][0-9]*)?$/;
+                              if (value === '' || decimalRegex.test(value)) {
+                                const normalizedValue = value.replace(',', '.');
+                                field.onChange(normalizedValue);
+                              }
                             }}
                           />
                         </FormControl>
@@ -552,7 +535,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
                   </div>
                 )}
                 
-                {/* Hidden canvas for capturing images */}
                 <canvas ref={canvasRef} className="hidden" />
               </div>
             </TabsContent>

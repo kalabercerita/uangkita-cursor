@@ -1,4 +1,42 @@
-# Welcome to your Lovable project
+# UangKita - Financial Management App
+
+A modern financial management application built with React, TypeScript, and Supabase.
+
+## Features
+
+- Wallet Management
+- Transaction Tracking
+- Financial Tools
+  - Investment Calculator
+  - Currency Converter
+  - Gold Calculator
+- Market Prices
+  - USD/IDR Exchange Rate
+  - Gold Price
+  - Silver Price
+
+## Tech Stack
+
+- React
+- TypeScript
+- Vite
+- Supabase
+- Tailwind CSS
+- Shadcn UI
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start the development server: `npm run dev`
+
+## Auto-Push Configuration
+
+This repository is configured with GitHub Actions to automatically push changes to the main branch.
+
+## License
+
+MIT
 
 ## Project info
 
@@ -49,16 +87,6 @@ npm run dev
 - Select the "Codespaces" tab.
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
 
 ## How can I deploy this project?
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Button } from '@/components/ui/button';
@@ -38,91 +37,97 @@ const generateAnalysis = (transactions: any[], categories: any[]) => {
     }
   });
 
-  // Find top expense and income categories
-  const topExpenseCategory = Object.entries(expensesByCategory)
-    .sort((a, b) => b[1] - a[1])[0];
+  // Find top expense categories
+  const sortedExpenses = Object.entries(expensesByCategory)
+    .sort((a, b) => b[1] - a[1]);
+  
+  const topExpenseCategories = sortedExpenses.slice(0, 3);
 
-  const topIncomeCategory = Object.entries(incomesByCategory)
-    .sort((a, b) => b[1] - a[1])[0];
+  // Find top income categories
+  const sortedIncomes = Object.entries(incomesByCategory)
+    .sort((a, b) => b[1] - a[1]);
+  
+  const topIncomeCategories = sortedIncomes.slice(0, 3);
 
-  // Calculate percentages
-  const topExpensePercentage = totalExpense > 0 
-    ? ((topExpenseCategory?.[1] || 0) / totalExpense * 100).toFixed(1) 
-    : 0;
-
+  // Calculate key financial metrics
   const savingsRate = totalIncome > 0 
-    ? ((totalIncome - totalExpense) / totalIncome * 100).toFixed(1)
+    ? ((totalIncome - totalExpense) / totalIncome * 100)
     : 0;
 
-  // Generate insights
+  const expenseToIncomeRatio = totalIncome > 0
+    ? (totalExpense / totalIncome * 100)
+    : 0;
+
+  // Generate professional insights
   let insights = [];
 
-  // Overall financial health
+  // 1. Overall Financial Health Assessment
+  insights.push("📊 Analisis Kesehatan Keuangan:");
   if (balance >= 0) {
-    insights.push(`Anda memiliki saldo positif sebesar Rp ${balance.toLocaleString('id-ID')}. Pendapatan Anda lebih besar dari pengeluaran, yang merupakan indikator kesehatan keuangan yang baik.`);
+    insights.push(`• Posisi Keuangan: POSITIF dengan surplus Rp ${balance.toLocaleString('id-ID')}`);
+    insights.push(`• Rasio Pengeluaran/Pendapatan: ${expenseToIncomeRatio.toFixed(1)}% (${expenseToIncomeRatio <= 70 ? 'BAIK' : 'PERLU PERHATIAN'})`);
+    insights.push(`• Tingkat Tabungan: ${savingsRate.toFixed(1)}% dari pendapatan${savingsRate >= 20 ? ' (SANGAT BAIK)' : savingsRate >= 10 ? ' (CUKUP)' : ' (PERLU DITINGKATKAN)'}`)
   } else {
-    insights.push(`Anda memiliki saldo negatif sebesar Rp ${Math.abs(balance).toLocaleString('id-ID')}. Pengeluaran Anda melebihi pendapatan, yang dapat menyebabkan masalah keuangan jika berlanjut.`);
+    insights.push(`• Posisi Keuangan: DEFISIT sebesar Rp ${Math.abs(balance).toLocaleString('id-ID')}`);
+    insights.push("• PERHATIAN: Pengeluaran melebihi pendapatan");
+    insights.push("• Rekomendasi: Evaluasi pengeluaran dan tingkatkan pendapatan");
   }
 
-  // Saving rate insights
-  const savingsRateNumber = parseFloat(savingsRate.toString());
-  if (savingsRateNumber > 20) {
-    insights.push(`Tingkat tabungan Anda sangat baik (${savingsRate}%). Anda menyimpan sebagian besar pendapatan Anda.`);
-  } else if (savingsRateNumber > 10) {
-    insights.push(`Tingkat tabungan Anda cukup baik (${savingsRate}%). Anda berhasil menyimpan sebagian pendapatan Anda.`);
-  } else if (savingsRateNumber > 0) {
-    insights.push(`Tingkat tabungan Anda rendah (${savingsRate}%). Pertimbangkan untuk meningkatkan jumlah yang Anda tabung.`);
+  // 2. Income Analysis
+  insights.push("\n💰 Analisis Pendapatan:");
+  insights.push(`• Total Pendapatan: Rp ${totalIncome.toLocaleString('id-ID')}`);
+  if (topIncomeCategories.length > 0) {
+    insights.push("• Sumber Pendapatan Utama:");
+    topIncomeCategories.forEach(([category, amount]) => {
+      const percentage = (amount / totalIncome * 100).toFixed(1);
+      insights.push(`  - ${category}: Rp ${amount.toLocaleString('id-ID')} (${percentage}%)`);
+    });
+  }
+
+  // 3. Expense Analysis
+  insights.push("\n💳 Analisis Pengeluaran:");
+  insights.push(`• Total Pengeluaran: Rp ${totalExpense.toLocaleString('id-ID')}`);
+  if (topExpenseCategories.length > 0) {
+    insights.push("• Kategori Pengeluaran Terbesar:");
+    topExpenseCategories.forEach(([category, amount]) => {
+      const percentage = (amount / totalExpense * 100).toFixed(1);
+      insights.push(`  - ${category}: Rp ${amount.toLocaleString('id-ID')} (${percentage}%)`);
+    });
+  }
+
+  // 4. Recommendations
+  insights.push("\n🎯 Rekomendasi:");
+  
+  // Savings recommendations
+  if (savingsRate < 10) {
+    insights.push("• Tingkatkan tabungan hingga minimal 10% dari pendapatan");
+  } else if (savingsRate < 20) {
+    insights.push("• Pertimbangkan untuk meningkatkan tabungan hingga 20% dari pendapatan");
   } else {
-    insights.push(`Anda tidak menabung dari pendapatan Anda. Pengeluaran Anda lebih besar dari pendapatan.`);
+    insights.push("• Pertahankan tingkat tabungan yang baik");
   }
 
-  // Category insights
-  if (topExpenseCategory) {
-    insights.push(`Kategori pengeluaran terbesar Anda adalah ${topExpenseCategory[0]} (${topExpensePercentage}% dari total pengeluaran).`);
+  // Expense management recommendations
+  if (expenseToIncomeRatio > 70) {
+    insights.push("• Kurangi pengeluaran non-esensial");
+    insights.push("• Buat anggaran bulanan yang lebih ketat");
   }
 
-  if (topIncomeCategory) {
-    insights.push(`Sumber pendapatan utama Anda adalah dari kategori ${topIncomeCategory[0]}.`);
+  // Investment recommendations if applicable
+  if (savingsRate >= 20) {
+    insights.push("• Pertimbangkan untuk mulai berinvestasi atau tingkatkan portofolio investasi");
   }
 
-  // Get transactions from last month
-  const today = new Date();
-  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-  
-  const lastMonthTransactions = transactions.filter(t => {
-    const transDate = new Date(t.date);
-    return transDate >= lastMonth;
-  });
-
-  const lastMonthExpense = lastMonthTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Provide recommendations
-  const recommendations = [];
-
-  // Fix: Ensure we're comparing numbers, not strings
-  const topExpensePercentageNumber = parseFloat(topExpensePercentage.toString());
-  
-  if (savingsRateNumber < 20) {
-    recommendations.push("Tingkatkan tabungan Anda dengan menetapkan target tabungan minimal 20% dari pendapatan.");
+  // Budget planning
+  if (topExpenseCategories.length > 0) {
+    const [topCategory, amount] = topExpenseCategories[0];
+    const percentage = (amount / totalExpense * 100).toFixed(1);
+    if (percentage > 40) {
+      insights.push(`• Evaluasi pengeluaran untuk kategori ${topCategory} yang mencapai ${percentage}% dari total pengeluaran`);
+    }
   }
 
-  if (topExpenseCategory && topExpensePercentageNumber > 30) {
-    recommendations.push(`Pertimbangkan untuk mengurangi pengeluaran di kategori ${topExpenseCategory[0]} yang menyumbang persentase besar dari total pengeluaran Anda.`);
-  }
-
-  if (balance < 0) {
-    recommendations.push("Prioritaskan penurunan pengeluaran atau peningkatan pendapatan untuk mencapai saldo positif.");
-  }
-
-  let finalAnalysis = insights.join(" ");
-  
-  if (recommendations.length > 0) {
-    finalAnalysis += "\n\nRekomendasi:\n- " + recommendations.join("\n- ");
-  }
-
-  return finalAnalysis;
+  return insights.join("\n");
 };
 
 const TransactionAIAnalysis = () => {
@@ -170,20 +175,9 @@ const TransactionAIAnalysis = () => {
         </div>
       ) : analysis ? (
         <div className="text-gray-700">
-          {analysis.split('\n\n').map((paragraph, idx) => (
+          {analysis.split('\n').map((paragraph, idx) => (
             <React.Fragment key={idx}>
-              {paragraph.startsWith('Rekomendasi:') ? (
-                <>
-                  <h4 className="font-semibold mt-4 mb-2">Rekomendasi:</h4>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {paragraph.replace('Rekomendasi:\n', '').split('\n').map((rec, recIdx) => (
-                      <li key={recIdx}>{rec.replace('- ', '')}</li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="mb-2">{paragraph}</p>
-              )}
+              <p className="mb-2">{paragraph}</p>
             </React.Fragment>
           ))}
         </div>

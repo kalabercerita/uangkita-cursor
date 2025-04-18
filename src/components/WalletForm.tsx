@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -34,8 +33,11 @@ import { Wallet, Plus } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nama dompet diperlukan' }),
-  balance: z.string().refine(val => !isNaN(Number(val)) && Number(val) >= 0, {
-    message: 'Saldo awal harus berupa angka non-negatif',
+  balance: z.string().refine(val => {
+    const num = Number(val);
+    return !isNaN(num) && num >= 0 && num <= 999999999999999; // Support up to quadrillion
+  }, {
+    message: 'Saldo awal harus berupa angka non-negatif dan tidak melebihi 999.999.999.999.999',
   }),
   currency: z.string().min(1, { message: 'Mata uang diperlukan' }),
   color: z.string().optional(),
@@ -160,10 +162,14 @@ const WalletForm: React.FC<WalletFormProps> = ({
                       type="number" 
                       placeholder="0" 
                       min="0" 
+                      max="999999999999999"
                       step="1000" 
                       {...field} 
                     />
                   </FormControl>
+                  <FormDescription>
+                    Masukkan saldo awal dompet (maksimal 999.999.999.999.999)
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

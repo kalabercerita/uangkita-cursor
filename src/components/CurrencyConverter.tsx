@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -259,87 +258,89 @@ const FinancialFacilities = () => {
           
           {/* Currency Converter Tab */}
           <TabsContent value="currency" className="space-y-4 pt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="from-amount">Jumlah</Label>
-                <Input
-                  id="from-amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+            <div className="space-y-6 p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="from-amount">Jumlah</Label>
+                  <Input
+                    id="from-amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="from-currency">Dari</Label>
+                  <Select value={fromCurrency} onValueChange={setFromCurrency}>
+                    <SelectTrigger id="from-currency">
+                      <SelectValue placeholder="Pilih mata uang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="from-currency">Dari</Label>
-                <Select value={fromCurrency} onValueChange={setFromCurrency}>
-                  <SelectTrigger id="from-currency">
-                    <SelectValue placeholder="Pilih mata uang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencies.map((currency) => (
-                      <SelectItem key={currency.code} value={currency.code}>
-                        {currency.code} - {currency.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="flex justify-center py-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleSwapCurrencies}
-                className="rounded-full"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="to-amount">Hasil Konversi</Label>
-                <Input
-                  id="to-amount"
-                  readOnly
-                  value={isLoading ? "Loading..." : convertedAmount}
-                />
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleSwapCurrencies}
+                  className="rounded-full"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="to-currency">Ke</Label>
-                <Select value={toCurrency} onValueChange={setToCurrency}>
-                  <SelectTrigger id="to-currency">
-                    <SelectValue placeholder="Pilih mata uang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencies.map((currency) => (
-                      <SelectItem key={currency.code} value={currency.code}>
-                        {currency.code} - {currency.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="to-amount">Hasil Konversi</Label>
+                  <Input
+                    id="to-amount"
+                    readOnly
+                    value={isLoading ? "Loading..." : convertedAmount}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="to-currency">Ke</Label>
+                  <Select value={toCurrency} onValueChange={setToCurrency}>
+                    <SelectTrigger id="to-currency">
+                      <SelectValue placeholder="Pilih mata uang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-            
-            <div className="text-sm text-muted-foreground">
-              {isLoading ? (
-                "Memuat kurs mata uang terbaru..."
-              ) : (
-                <>
-                  <div>1 {fromCurrency} = {(exchangeRates[toCurrency] / exchangeRates[fromCurrency]).toFixed(4)} {toCurrency}</div>
-                  <div>1 {toCurrency} = {(exchangeRates[fromCurrency] / exchangeRates[toCurrency]).toFixed(4)} {fromCurrency}</div>
-                </>
-              )}
-            </div>
-            
-            <div className="text-xs text-muted-foreground">
-              Nilai tukar diperbarui setiap jam.
+              
+              <div className="text-sm text-muted-foreground">
+                {isLoading ? (
+                  "Memuat kurs mata uang terbaru..."
+                ) : (
+                  <>
+                    <div>1 {fromCurrency} = {(exchangeRates[toCurrency] / exchangeRates[fromCurrency]).toFixed(4)} {toCurrency}</div>
+                    <div>1 {toCurrency} = {(exchangeRates[fromCurrency] / exchangeRates[toCurrency]).toFixed(4)} {fromCurrency}</div>
+                  </>
+                )}
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                Nilai tukar diperbarui setiap jam.
+              </div>
             </div>
           </TabsContent>
           

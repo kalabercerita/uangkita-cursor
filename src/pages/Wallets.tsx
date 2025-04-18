@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useFinance } from '@/contexts/FinanceContext';
 import { Wallet, Plus, ArrowRight } from 'lucide-react';
 import WalletForm from '@/components/WalletForm';
+import { WalletTransfer } from '@/components/WalletTransfer';
 
 const Wallets = () => {
   const { wallets } = useFinance();
@@ -42,46 +42,49 @@ const Wallets = () => {
         </Dialog>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Total Aset</CardTitle>
-          <CardDescription>Jumlah total dana di semua dompet</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">
-            {formatCurrency(totalAssets, 'IDR')}
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {wallets.map((wallet) => (
-          <Card key={wallet.id} className="overflow-hidden">
-            <CardHeader className="border-b bg-muted/50">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <div className={`w-3 h-3 rounded-full bg-finance-${wallet.color || 'teal'} mr-2`}></div>
-                  {wallet.name}
-                </CardTitle>
-                <Wallet className="h-5 w-5 text-muted-foreground" />
-              </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="col-span-full md:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Aset</CardTitle>
+              <CardDescription>Total saldo dari semua wallet</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(wallet.balance, wallet.currency)}
+                {wallets.reduce((total, wallet) => total + wallet.balance, 0)
+                  .toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {wallet.currency}
-              </p>
             </CardContent>
-            <CardFooter className="border-t bg-muted/50 p-3">
+          </Card>
+        </div>
+        
+        <div className="col-span-full md:col-span-1">
+          <WalletTransfer />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {wallets.map((wallet) => (
+          <Card key={wallet.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center mr-2" style={{ backgroundColor: wallet.color }}>
+                  <Wallet className="h-4 w-4 text-white" />
+                </div>
+                {wallet.name}
+              </CardTitle>
+              <CardDescription>Saldo saat ini</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{formatCurrency(wallet.balance, wallet.currency)}</p>
+            </CardContent>
+            <CardFooter>
               <Button 
-                variant="ghost" 
-                className="w-full justify-between" 
-                onClick={() => navigate(`/wallet/${wallet.id}`)}
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate(`/wallets/${wallet.id}`)}
               >
-                <span>Lihat Detail</span>
-                <ArrowRight className="h-4 w-4" />
+                Lihat Detail <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
           </Card>

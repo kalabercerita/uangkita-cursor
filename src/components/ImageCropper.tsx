@@ -1,238 +1,187 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface ImageCropperProps {
-  imageUrl: string;
-  aspect?: number;
-  onCrop: (croppedImageUrl: string) => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  image: string;
+  onCrop: (croppedImage: string) => void;
+  onClose: () => void;
 }
 
-const ImageCropper: React.FC<ImageCropperProps> = ({
-  imageUrl,
-  aspect = 1,
-  onCrop,
-  open,
-  onOpenChange,
-}) => {
-  const [scale, setScale] = useState<number>(1);
+const ImageCropper: React.FC<ImageCropperProps> = ({ image, onCrop, onClose }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [cropWidth, setCropWidth] = useState(200);
+  const [cropHeight, setCropHeight] = useState(200);
+  const [imageWidth, setImageWidth] = useState(0);
+  const [imageHeight, setImageHeight] = useState(0);
 
-  // Load image when URL changes
   useEffect(() => {
-    if (!imageUrl) return;
-    
-    const img = new Image();
-    img.onload = () => {
-      // Once image is loaded, set dimensions for proper initialization
-      setImageDimensions({ width: img.width, height: img.height });
-      
-      // Center the image initially
-      if (canvasRef.current) {
-        const canvasSize = canvasRef.current.width;
-        const imgAspect = img.width / img.height;
-        
-        let scaledWidth, scaledHeight;
-        
-        if (imgAspect > 1) {
-          // Landscape image
-          scaledHeight = canvasSize;
-          scaledWidth = scaledHeight * imgAspect;
-        } else {
-          // Portrait image or square
-          scaledWidth = canvasSize;
-          scaledHeight = scaledWidth / imgAspect;
-        }
-        
-        // Calculate the initial position to center the image
-        setPosition({
-          x: (canvasSize - scaledWidth) / 2,
-          y: (canvasSize - scaledHeight) / 2
-        });
-      }
-      
-      // Set image source for the reference element
-      if (imageRef.current) {
-        imageRef.current.src = imageUrl;
-      }
-    };
-    img.src = imageUrl;
-  }, [imageUrl]);
-
-  // Draw the cropping preview whenever scale or position changes
-  useEffect(() => {
-    drawCanvas();
-  }, [scale, position, imageDimensions]);
-
-  const drawCanvas = () => {
-    if (!canvasRef.current || !imageRef.current || !imageRef.current.complete) return;
-
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const size = canvas.width; // Square canvas
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, size, size);
-    
-    // Draw the image with scaling and positioning
-    const img = imageRef.current;
-    const scaledWidth = img.width * scale;
-    const scaledHeight = img.height * scale;
-    
-    ctx.drawImage(
-      img,
-      // Source rectangle
-      0, 0, img.width, img.height,
-      // Destination rectangle (with offset for panning)
-      position.x, position.y, scaledWidth, scaledHeight
-    );
-    
-    // Draw circular crop overlay
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-    
-    // Draw circular outline
-    ctx.save();
-    ctx.strokeStyle = '#ffffff';
+    const img = new Image();
+    img.src = image;
+    img.onload = () => {
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+      setImageWidth(img.width);
+      setImageHeight(img.height);
+
+      // Draw image
+      ctx.drawImage(img, 0, 0);
+
+      // Draw crop rectangle
+      drawCropRectangle(ctx);
+    };
+  }, [image]);
+
+  const drawCropRectangle = (ctx: CanvasRenderingContext2D) => {
+    ctx.strokeStyle = 'white';
     ctx.lineWidth = 2;
+    ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
+
+    // Draw grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1;
+    
+    // Vertical lines
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
-    ctx.closePath();
+    ctx.moveTo(cropX + cropWidth / 3, cropY);
+    ctx.lineTo(cropX + cropWidth / 3, cropY + cropHeight);
     ctx.stroke();
-    ctx.restore();
+    
+    ctx.beginPath();
+    ctx.moveTo(cropX + (cropWidth * 2) / 3, cropY);
+    ctx.lineTo(cropX + (cropWidth * 2) / 3, cropY + cropHeight);
+    ctx.stroke();
+    
+    // Horizontal lines
+    ctx.beginPath();
+    ctx.moveTo(cropX, cropY + cropHeight / 3);
+    ctx.lineTo(cropX + cropWidth, cropY + cropHeight / 3);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(cropX, cropY + (cropHeight * 2) / 3);
+    ctx.lineTo(cropX + cropWidth, cropY + (cropHeight * 2) / 3);
+    ctx.stroke();
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    setDragging(true);
-    setDragStart({
-      x: e.clientX - rect.left - position.x,
-      y: e.clientY - rect.top - position.y
-    });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (
+      x >= cropX &&
+      x <= cropX + cropWidth &&
+      y >= cropY &&
+      y <= cropY + cropHeight
+    ) {
+      setIsDragging(true);
+      setStartX(x - cropX);
+      setStartY(y - cropY);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!dragging || !canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    setPosition({
-      x: e.clientX - rect.left - dragStart.x,
-      y: e.clientY - rect.top - dragStart.y
-    });
+    if (!isDragging) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const newX = x - startX;
+    const newY = y - startY;
+
+    // Keep crop rectangle within canvas bounds
+    setCropX(Math.max(0, Math.min(newX, canvas.width - cropWidth)));
+    setCropY(Math.max(0, Math.min(newY, canvas.height - cropHeight)));
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Redraw
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const img = new Image();
+    img.src = image;
+    ctx.drawImage(img, 0, 0);
+    drawCropRectangle(ctx);
   };
 
   const handleMouseUp = () => {
-    setDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    setDragging(true);
-    setDragStart({
-      x: touch.clientX - rect.left - position.x,
-      y: touch.clientY - rect.top - position.y
-    });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!dragging || !canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    setPosition({
-      x: touch.clientX - rect.left - dragStart.x,
-      y: touch.clientY - rect.top - dragStart.y
-    });
-    
-    // Prevent page scrolling while dragging
-    e.preventDefault();
+    setIsDragging(false);
   };
 
   const handleCrop = () => {
-    if (!canvasRef.current) return;
-    
-    // Get the data URL from the canvas
-    const croppedImageUrl = canvasRef.current.toDataURL('image/png');
-    onCrop(croppedImageUrl);
-    onOpenChange(false);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Create a temporary canvas for the cropped image
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = cropWidth;
+    tempCanvas.height = cropHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    // Draw the cropped portion
+    tempCtx.drawImage(
+      canvas,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      cropWidth,
+      cropHeight
+    );
+
+    // Convert to base64
+    const croppedImage = tempCanvas.toDataURL('image/jpeg');
+    onCrop(croppedImage);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Crop Foto Profil</DialogTitle>
+          <DialogTitle>Crop Image</DialogTitle>
         </DialogHeader>
-        
-        <div className="flex flex-col items-center gap-4">
-          {/* Hidden image element for reference */}
-          <img
-            ref={imageRef}
-            src={imageUrl}
-            alt="Original"
-            className="hidden"
-            onLoad={() => drawCanvas()}
+        <div className="grid gap-4 py-4">
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            style={{ border: '1px solid #ccc', cursor: isDragging ? 'grabbing' : 'grab' }}
           />
-          
-          {/* Canvas for cropping */}
-          <div className="relative overflow-hidden w-full aspect-square rounded-full bg-muted flex items-center justify-center">
-            <canvas
-              ref={canvasRef}
-              width={300}
-              height={300}
-              className="cursor-move touch-none"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleMouseUp}
-            />
-          </div>
-          
-          {/* Controls for zoom */}
-          <div className="w-full flex flex-col gap-2">
-            <label className="text-sm">Zoom:</label>
-            <Slider
-              value={[scale]}
-              min={0.5}
-              max={3}
-              step={0.01}
-              onValueChange={(values) => setScale(values[0])}
-            />
-          </div>
-          
-          <div className="flex justify-between w-full">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button onClick={handleCrop} className="bg-gradient-to-r from-finance-teal to-finance-purple">
-              Crop & Simpan
-            </Button>
-          </div>
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleCrop}>Crop</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

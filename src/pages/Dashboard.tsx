@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -51,11 +50,32 @@ const Dashboard = () => {
   const last7Days = useMemo(() => {
     const result = [];
     const today = new Date();
-    let cumulativeBalance = 0; // Track running balance across days
     
+    // Get initial total balance from all wallets
+    const initialBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+    
+    // Calculate running balance by subtracting all transactions in the last 7 days
+    let runningBalance = initialBalance;
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    // Subtract all transactions that happened in the last 7 days
+    transactions.forEach(t => {
+      const transDate = new Date(t.date);
+      if (transDate > today) return;
+      
+      if (t.type === 'expense') {
+        runningBalance += t.amount;
+      } else {
+        runningBalance -= t.amount;
+      }
+    });
+    
+    // Now calculate daily balances
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
       
       // Format date as string for display
       const dateStr = date.toLocaleDateString('id-ID', { 
@@ -80,19 +100,21 @@ const Dashboard = () => {
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       
-      // Update the cumulative balance by adding income and subtracting expense
-      cumulativeBalance += (income - expense);
+      // Update running balance
+      if (i < 6) { // Skip first iteration to maintain initial balance
+        runningBalance += (income - expense);
+      }
       
       result.push({ 
         name: dateStr, 
         income, 
         expense,
-        balance: cumulativeBalance // Use cumulative balance instead of daily balance
+        balance: runningBalance
       });
     }
     
     return result;
-  }, [transactions]);
+  }, [transactions, wallets]);
   
   // Prepare category data for pie chart
   const categoryData = useMemo(() => {

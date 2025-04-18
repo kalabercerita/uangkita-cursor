@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet } from '@/types';
 import { DbWallet } from '@/utils/supabase-types';
@@ -138,6 +137,28 @@ export const deleteWalletOperation = async (walletId: string, showToast: ToastTy
       description: "Terjadi kesalahan saat mencoba menghapus dompet",
       variant: "destructive",
     });
+    throw error;
+  }
+};
+
+export const transferBetweenWallets = async (
+  fromWalletId: string,
+  toWalletId: string,
+  amount: number,
+  description: string
+) => {
+  try {
+    const { data, error } = await supabase.rpc('transfer_between_wallets', {
+      p_from_wallet_id: fromWalletId,
+      p_to_wallet_id: toWalletId,
+      p_amount: amount,
+      p_description: description
+    });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error transferring between wallets:', error);
     throw error;
   }
 };

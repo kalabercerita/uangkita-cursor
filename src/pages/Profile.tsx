@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,10 @@ const Profile = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [tempImageUrl, setTempImageUrl] = useState<string | null>(null);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   // Load profile image from localStorage when component mounts
   useEffect(() => {
@@ -78,7 +81,7 @@ const Profile = () => {
     try {
       setIsChangingPassword(true);
       
-      // Call the updatePassword function from auth context
+      // Call the updatePassword function with required arguments
       await updatePassword(currentPassword, newPassword);
       
       toast({
@@ -99,49 +102,130 @@ const Profile = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
       const reader = new FileReader();
-      
-      reader.onloadend = () => {
-        // Open cropper with temporary image
-        setTempImageUrl(reader.result as string);
+      reader.onload = () => {
+        setImageToCrop(reader.result as string);
         setIsCropperOpen(true);
       };
-      
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCroppedImage = (croppedImageUrl: string) => {
-    setIsUploading(true);
-    
+  const handleCrop = async (croppedImage: string) => {
     try {
-      // Save cropped image to localStorage
-      localStorage.setItem('profileImage', croppedImageUrl);
-      setProfileImage(croppedImageUrl);
+      // Save to localStorage
+      localStorage.setItem('profileImage', croppedImage);
+      setProfileImage(croppedImage);
       
-      // Also save to sessionStorage for header component
-      sessionStorage.setItem('profileImage', croppedImageUrl);
+      // Update session storage for immediate header update
+      sessionStorage.setItem('profileImage', croppedImage);
       
       // Dispatch a custom event to notify header of profile image change
       window.dispatchEvent(new Event('profileImageUpdated'));
       
+      // Upload to Supabase storage
+      await uploadToSupabase(croppedImage);
+      
       toast({
-        title: "Berhasil",
-        description: "Foto profil telah diperbarui",
+        title: "Foto profil berhasil diperbarui",
+        description: "Foto profil Anda telah berhasil disimpan",
       });
     } catch (error) {
       console.error('Error saving profile image:', error);
       toast({
-        title: "Gagal",
-        description: "Gagal menyimpan foto profil",
-        variant: "destructive"
+        title: "Gagal menyimpan foto profil",
+        description: "Terjadi kesalahan saat menyimpan foto profil",
+        variant: "destructive",
       });
     } finally {
-      setIsUploading(false);
       setIsCropperOpen(false);
+      setImageToCrop(null);
+    }
+  };
+
+  const uploadToSupabase = async (imageData: string) => {
+    try {
+      const base64Data = imageData.split(',')[1];
+      const fileExt = 'jpg';
+      const fileName = `${user?.id}.${fileExt}`;
+      const filePath = `profile-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, base64ToBlob(base64Data, 'image/jpeg'), {
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath);
+
+      // Update user metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { profile_photo_url: publicUrl }
+      });
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Foto profil berhasil diperbarui",
+        description: "Foto profil Anda telah berhasil disimpan",
+      });
+    } catch (error) {
+      console.error('Error uploading profile photo:', error);
+      toast({
+        title: "Gagal mengunggah foto profil",
+        description: "Terjadi kesalahan saat mengunggah foto profil",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const base64ToBlob = (base64: string, type: string) => {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteArrays.push(byteCharacters.charCodeAt(i));
+    }
+    return new Blob([new Uint8Array(byteArrays)], { type });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { name },
+        email,
+      });
+
+      if (error) throw error;
+
+      // Update password if new password is provided
+      if (newPassword && confirmPassword) {
+        await updatePassword(currentPassword, newPassword);
+      }
+
+      toast({
+        title: "Profil diperbarui",
+        description: "Profil Anda telah berhasil diperbarui",
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Gagal memperbarui profil",
+        description: "Terjadi kesalahan saat mencoba memperbarui profil",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -194,7 +278,7 @@ const Profile = () => {
                   type="file" 
                   accept="image/*" 
                   className="hidden" 
-                  onChange={handleImageUpload}
+                  onChange={handleImageChange}
                   disabled={isUploading}
                 />
               </div>
@@ -272,13 +356,14 @@ const Profile = () => {
         </Card>
       </div>
 
-      {/* Image Cropper Component */}
-      {tempImageUrl && (
+      {isCropperOpen && imageToCrop && (
         <ImageCropper
-          imageUrl={tempImageUrl}
-          onCrop={handleCroppedImage}
-          open={isCropperOpen}
-          onOpenChange={setIsCropperOpen}
+          image={imageToCrop}
+          onCrop={handleCrop}
+          onClose={() => {
+            setIsCropperOpen(false);
+            setImageToCrop(null);
+          }}
         />
       )}
     </div>

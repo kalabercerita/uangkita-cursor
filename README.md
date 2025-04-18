@@ -30,6 +30,45 @@ A modern financial management application built with React, TypeScript, and Supa
 2. Install dependencies: `npm install`
 3. Start the development server: `npm run dev`
 
+## Development with Cursor
+
+This project is developed using Cursor IDE, which provides an enhanced development experience with AI-powered assistance.
+
+### How to edit this code?
+
+**Using Cursor IDE**
+
+1. Open the project in Cursor IDE
+2. Make your changes
+3. Commit and push your changes
+
+**Using your preferred IDE**
+
+If you want to work locally using your own IDE, you can clone this repo and push changes.
+
+Requirements:
+- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+```sh
+# Step 1: Clone the repository
+git clone https://github.com/kalabercerita/uangkita-cursor.git
+
+# Step 2: Navigate to the project directory
+cd uangkita-cursor
+
+# Step 3: Install dependencies
+npm install
+
+# Step 4: Start the development server
+npm run dev
+```
+
+**Edit directly in GitHub**
+
+- Navigate to the desired file(s)
+- Click the "Edit" button (pencil icon)
+- Make your changes and commit
+
 ## Auto-Push Configuration
 
 This repository is configured with GitHub Actions to automatically push changes to the main branch.

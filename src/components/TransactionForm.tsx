@@ -37,8 +37,11 @@ import ReceiptAnalyzer from './ReceiptAnalyzer';
 
 const formSchema = z.object({
   description: z.string().min(2, { message: 'Deskripsi diperlukan' }),
-  amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
-    message: 'Jumlah harus berupa angka positif',
+  amount: z.string().refine(val => {
+    const num = Number(val);
+    return !isNaN(num) && num > 0 && Number.isFinite(num) && /^\d+(\.\d{0,2})?$/.test(val);
+  }, {
+    message: 'Jumlah harus berupa angka positif dengan maksimal 2 angka desimal',
   }),
   type: z.enum(['income', 'expense', 'transfer']),
   categoryId: z.string({ required_error: 'Silakan pilih kategori' }),
@@ -310,21 +313,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ walletId, transaction
                       <FormItem>
                         <FormLabel>Jumlah</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="text"
                             inputMode="decimal"
-                            placeholder="0"
-                            {...field} 
+                            placeholder="Masukkan jumlah"
+                            {...field}
                             onChange={(e) => {
                               const value = e.target.value;
-                              const decimalRegex = /^[0-9]*([.,][0-9]*)?$/;
-                              if (value === '' || decimalRegex.test(value)) {
-                                const normalizedValue = value.replace(',', '.');
-                                field.onChange(normalizedValue);
+                              if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
+                                field.onChange(value);
                               }
                             }}
                           />
                         </FormControl>
+                        <FormDescription>
+                          Masukkan jumlah dengan format angka (contoh: 18512 atau 18512.50)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

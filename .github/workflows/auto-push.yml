@@ -1,0 +1,34 @@
+name: Auto Push Changes
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  auto-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        repository: kalabercerita/uangkita-cursor
+        
+    - name: Set up Git
+      run: |
+        git config --global user.name "kalabercerita"
+        git config --global user.email "ardirusmana123@gmail.com"
+        
+    - name: Check for changes
+      run: |
+        if [[ -n $(git status --porcelain) ]]; then
+          git add .
+          git commit -m "Auto-commit: Update changes"
+          git push
+        else
+          echo "No changes to commit"
+        fi 

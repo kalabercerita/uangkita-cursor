@@ -53,7 +53,7 @@ const defaultSettings: AppSettings = {
 const SETTINGS_STORAGE_KEY = 'uangkita_app_settings';
 
 const Settings = () => {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [language, setLanguage] = useState<string>('id');
   const [currency, setCurrency] = useState<string>('IDR');
@@ -104,19 +104,15 @@ const Settings = () => {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
   }, [appSettings]);
 
-  // Handle toggle for financial facilities visibility
   const handleToggleFinancialFacilities = (checked: boolean) => {
     setAppSettings(prev => ({
       ...prev,
       showFinancialFacilities: checked
     }));
-    
-    toast({
-      title: checked ? "Fasilitas Keuangan Ditampilkan" : "Fasilitas Keuangan Disembunyikan",
-      description: checked 
-        ? "Fasilitas keuangan akan ditampilkan di aplikasi" 
-        : "Fasilitas keuangan akan disembunyikan di aplikasi",
-    });
+  };
+
+  const handleThemeChange = (checked: boolean) => {
+    setTheme(checked ? 'dark' : 'light');
   };
 
   const handleResetData = () => {
@@ -227,10 +223,8 @@ const Settings = () => {
               </Label>
               <Switch 
                 id="dark-mode" 
-                checked={resolvedTheme === 'dark'}
-                onCheckedChange={(checked) => {
-                  setTheme(checked ? 'dark' : 'light');
-                }}
+                checked={theme === 'dark'}
+                onCheckedChange={handleThemeChange}
               />
             </div>
             

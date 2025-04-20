@@ -14,6 +14,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import {
   Select,
@@ -34,7 +35,12 @@ import { transferBetweenWallets } from '@/contexts/finance/walletOperations';
 const transferSchema = z.object({
   fromWalletId: z.string().min(1, 'Pilih wallet sumber'),
   toWalletId: z.string().min(1, 'Pilih wallet tujuan'),
-  amount: z.number().min(1, 'Jumlah harus lebih dari 0'),
+  amount: z.string().refine(val => {
+    const num = Number(val);
+    return !isNaN(num) && num > 0 && Number.isFinite(num) && /^\d+(\.\d{0,2})?$/.test(val);
+  }, {
+    message: 'Jumlah harus berupa angka positif dengan maksimal 2 angka desimal',
+  }),
   description: z.string().optional()
 });
 
@@ -58,14 +64,14 @@ export function WalletTransfer() {
       await transferBetweenWallets(
         data.fromWalletId,
         data.toWalletId,
-        data.amount,
+        Number(data.amount),
         data.description || ''
       );
       
       await refreshWallets();
       toast({
         title: 'Transfer Berhasil',
-        description: `Berhasil transfer ${data.amount.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}`,
+        description: `Berhasil transfer ${formatCurrency(Number(data.amount), 'IDR')}`,
       });
       
       form.reset();
@@ -147,12 +153,22 @@ export function WalletTransfer() {
                   <FormLabel>Jumlah</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="Masukkan jumlah transfer"
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow numbers and one decimal point
+                        if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
+                          field.onChange(value);
+                        }
+                      }}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Masukkan jumlah dengan format angka (contoh: 18512 atau 18512.50)
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

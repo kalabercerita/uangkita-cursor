@@ -1,5 +1,7 @@
-
-project_id = "cussrbqrhbmafhdrgaxo"
+# Supabase project configuration
+project_id = "jvdmtxoumqfpsejbdorr"
+api_url = "https://jvdmtxoumqfpsejbdorr.supabase.co"
+db_url = "postgresql://postgres:[YOUR-PASSWORD]@db.jvdmtxoumqfpsejbdorr.supabase.co:5432/postgres"
 
 [api]
 port = 54321
@@ -28,8 +30,13 @@ api_url = "http://localhost"
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000", "localhost:3000", "localhost:3000/login"]
+site_url = "http://10.0.2.2:3000"  # IP khusus untuk Android emulator
+additional_redirect_urls = [
+    "http://10.0.2.2:3000",
+    "http://localhost:3000",
+    "http://localhost:3000/login",
+    "http://10.0.2.2:3000/login"
+]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10

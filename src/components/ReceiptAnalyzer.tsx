@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -39,22 +39,35 @@ const ReceiptAnalyzer: React.FC<ReceiptAnalyzerProps> = ({ imageUrl, onResult })
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
 
   const analyzeReceipt = async () => {
+    if (!imageUrl) return;
+    
     setIsAnalyzing(true);
     setError(null);
-    setAnalysisResult(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-receipt', {
+      const { data, error: invokeError } = await supabase.functions.invoke('analyze-receipt', {
         body: { imageUrl },
       });
       
-      if (error) throw error;
+      if (invokeError) {
+        // Check if it's a non-2xx status code error
+        if (invokeError.message?.includes('non-2xx status code')) {
+          if (retryCount < 2) { // Try up to 2 more times
+            setRetryCount(prev => prev + 1);
+            setTimeout(() => analyzeReceipt(), 1000); // Retry after 1 second
+            return;
+          }
+        }
+        throw invokeError;
+      }
       
       if (data) {
         setAnalysisResult(data);
+        setRetryCount(0); // Reset retry count on success
         
         // Pass the main transaction details to the parent component
         onResult({
@@ -70,7 +83,8 @@ const ReceiptAnalyzer: React.FC<ReceiptAnalyzerProps> = ({ imageUrl, onResult })
       }
     } catch (error) {
       console.error('Error analyzing receipt:', error);
-      setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat menganalisis foto');
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menganalisis foto';
+      setError(errorMessage);
       
       toast({
         title: "Gagal menganalisis",
@@ -81,6 +95,13 @@ const ReceiptAnalyzer: React.FC<ReceiptAnalyzerProps> = ({ imageUrl, onResult })
       setIsAnalyzing(false);
     }
   };
+
+  // Auto-analyze when imageUrl changes
+  useEffect(() => {
+    if (imageUrl) {
+      analyzeReceipt();
+    }
+  }, [imageUrl]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,7 +116,7 @@ const ReceiptAnalyzer: React.FC<ReceiptAnalyzerProps> = ({ imageUrl, onResult })
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
             <div className="bg-white p-4 rounded-lg flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Menganalisis struk...</span>
+              <span>Menganalisis struk{retryCount > 0 ? ` (Percobaan ${retryCount + 1})` : ''}...</span>
             </div>
           </div>
         )}
@@ -104,7 +125,19 @@ const ReceiptAnalyzer: React.FC<ReceiptAnalyzerProps> = ({ imageUrl, onResult })
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            <Button
+              variant="link"
+              className="p-0 h-auto font-normal text-destructive hover:text-destructive/90 ml-2"
+              onClick={() => {
+                setRetryCount(0);
+                analyzeReceipt();
+              }}
+            >
+              Coba lagi
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
       
@@ -155,25 +188,12 @@ const ReceiptAnalyzer: React.FC<ReceiptAnalyzerProps> = ({ imageUrl, onResult })
         </div>
       )}
       
-      <Button 
-        className="w-full bg-gradient-to-r from-finance-teal to-finance-purple"
-        onClick={analyzeReceipt}
-        disabled={isAnalyzing}
-      >
-        {isAnalyzing ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Menganalisis...
-          </>
-        ) : (
-          'Analisis Foto dengan AI'
-        )}
-      </Button>
-      
-      <p className="text-sm text-muted-foreground text-center">
-        Catatan: Fitur ini menggunakan AI untuk mengidentifikasi detail transaksi dari foto struk.
-        Hasil analisis mungkin tidak selalu 100% akurat. Silakan periksa dan sesuaikan jika diperlukan.
-      </p>
+      {!isAnalyzing && !analysisResult && !error && (
+        <p className="text-sm text-muted-foreground text-center">
+          Catatan: Fitur ini menggunakan AI untuk mengidentifikasi detail transaksi dari foto struk.
+          Hasil analisis mungkin tidak selalu 100% akurat. Silakan periksa dan sesuaikan jika diperlukan.
+        </p>
+      )}
     </div>
   );
 };

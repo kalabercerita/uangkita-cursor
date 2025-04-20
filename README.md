@@ -138,3 +138,63 @@ Yes it is!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Fitur Analisis Struk dengan AI
+
+Aplikasi ini memiliki fitur untuk menganalisis struk belanja menggunakan AI. Untuk menggunakan fitur ini, Anda perlu melakukan beberapa setup:
+
+### Setup di Supabase Dashboard
+
+1. Buka [Supabase Dashboard](https://supabase.com/dashboard/project/jvdmtxoumqfpsejbdorr)
+2. Pergi ke bagian "Edge Functions"
+3. Klik "New Function"
+4. Masukkan informasi berikut:
+   - Name: `analyze-receipt`
+   - Verify JWT: `false` (karena menggunakan API key)
+5. Copy-paste kode dari file `supabase/functions/analyze-receipt/index.ts`
+6. Tambahkan environment variable:
+   - Key: `OPENAI_API_KEY`
+   - Value: [Your OpenAI API Key]
+
+### Cara Menggunakan
+
+1. Pada halaman transaksi, klik tab "Dari Foto"
+2. Anda bisa mengambil foto struk langsung dari kamera atau memilih dari galeri
+3. Klik "Analisis Foto dengan AI"
+4. Sistem akan menganalisis struk dan mengisi form transaksi secara otomatis dengan:
+   - Deskripsi merchant/transaksi
+   - Total nominal
+   - Tanggal transaksi
+   - Daftar item (jika tersedia dalam struk)
+5. Periksa hasil analisis dan sesuaikan jika diperlukan
+6. Klik "Tambah Transaksi" untuk menyimpan
+
+### Catatan
+
+- Fitur ini menggunakan OpenAI Vision API untuk menganalisis struk
+- Hasil analisis mungkin tidak selalu 100% akurat
+- Pastikan foto struk jelas dan terbaca
+- Untuk hasil terbaik, pastikan struk menampilkan:
+  - Nama merchant
+  - Total pembayaran
+  - Tanggal transaksi
+  - Daftar item (opsional)
+
+### Troubleshooting
+
+Jika mengalami masalah:
+1. Pastikan foto struk jelas dan tidak blur
+2. Cek koneksi internet
+3. Pastikan environment variable `OPENAI_API_KEY` sudah diset dengan benar
+4. Jika hasil analisis tidak akurat, gunakan input manual
+
+### Pengembangan
+
+Untuk mengembangkan fitur ini:
+1. Edit file `supabase/functions/analyze-receipt/index.ts` untuk logika analisis
+2. Edit file `src/components/ReceiptAnalyzer.tsx` untuk UI komponen
+3. Deploy ulang fungsi ke Supabase setelah melakukan perubahan
+
+## Lisensi
+
+MIT License

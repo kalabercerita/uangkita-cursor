@@ -68,7 +68,25 @@ serve(async (req) => {
     
     if (!imageUrl) {
       return new Response(
-        JSON.stringify({ error: 'Missing image URL' }),
+        JSON.stringify({ 
+          error: 'Missing image URL',
+          success: false,
+          message: 'URL gambar tidak ditemukan'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate image URL format
+    try {
+      new URL(imageUrl);
+    } catch {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid image URL',
+          success: false,
+          message: 'Format URL gambar tidak valid'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -76,7 +94,14 @@ serve(async (req) => {
     // Get OpenAI API key from environment variables
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'OpenAI API key not configured',
+          success: false,
+          message: 'Konfigurasi API tidak lengkap'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Call OpenAI Vision API to analyze the receipt
@@ -102,6 +127,9 @@ serve(async (req) => {
                      - For amounts, look for terms like "TOTAL", "JUMLAH", "GRAND TOTAL"
                      - Dates might be in various formats (DD/MM/YYYY, DD-MM-YYYY, or written in Indonesian)
                      - Merchant names might be at the top or bottom of the receipt
+                     - If no date is found, use today's date
+                     - If no merchant name is found, use "Transaksi Baru"
+                     - Amount must be a positive number
                      
                      Return ONLY a JSON object with these exact keys:
                      {
@@ -126,7 +154,14 @@ serve(async (req) => {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('OpenAI API error:', errorData);
-      throw new Error('Failed to analyze receipt with OpenAI');
+      return new Response(
+        JSON.stringify({ 
+          error: 'OpenAI API error',
+          success: false,
+          message: 'Gagal menganalisis gambar. Silakan coba lagi.'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const result = await response.json();
@@ -137,44 +172,61 @@ serve(async (req) => {
     try {
       // Find JSON in the response
       const jsonMatch = aiMessage.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        
-        // Clean and validate the data
-        extractedData = {
-          description: parsed.description?.trim() || 'Transaksi Baru',
-          amount: typeof parsed.amount === 'string' ? 
-            cleanAmount(parsed.amount) : 
-            (typeof parsed.amount === 'number' ? parsed.amount : 0),
-          date: parsed.date ? parseIndonesianDate(parsed.date) : new Date(),
-          items: Array.isArray(parsed.items) ? parsed.items.map(item => ({
-            name: item.name?.trim() || '',
-            price: typeof item.price === 'string' ? 
-              cleanAmount(item.price) : 
-              (typeof item.price === 'number' ? item.price : 0)
-          })) : undefined
-        };
-
-        // Additional validation
-        if (extractedData.amount <= 0) {
-          console.warn('Invalid amount detected:', parsed.amount);
-          throw new Error('Invalid amount');
-        }
-      } else {
+      if (!jsonMatch) {
         throw new Error('No JSON found in AI response');
       }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Clean and validate the data
+      extractedData = {
+        description: parsed.description?.trim() || 'Transaksi Baru',
+        amount: typeof parsed.amount === 'string' ? 
+          cleanAmount(parsed.amount) : 
+          (typeof parsed.amount === 'number' ? parsed.amount : 0),
+        date: parsed.date ? parseIndonesianDate(parsed.date) : new Date(),
+        items: Array.isArray(parsed.items) ? parsed.items.map(item => ({
+          name: item.name?.trim() || '',
+          price: typeof item.price === 'string' ? 
+            cleanAmount(item.price) : 
+            (typeof item.price === 'number' ? item.price : 0)
+        })) : undefined
+      };
+
+      // Additional validation
+      if (extractedData.amount <= 0) {
+        console.warn('Invalid amount detected:', parsed.amount);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid amount',
+            success: false,
+            message: 'Jumlah transaksi tidak valid atau tidak ditemukan'
+          }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: extractedData,
+          message: 'Berhasil menganalisis struk'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
     } catch (err) {
       console.error('Error parsing AI response:', err);
       console.log('Raw AI response:', aiMessage);
-      throw new Error('Failed to parse receipt data');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to parse receipt data',
+          success: false,
+          message: 'Gagal memproses data struk. Format tidak sesuai.'
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    console.log('Receipt analysis result:', extractedData);
-    
-    return new Response(
-      JSON.stringify(extractedData),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
 
   } catch (error) {
     console.error('Error in analyze-receipt function:', error);
@@ -182,9 +234,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        description: 'Transaksi Baru',
-        amount: 0,
-        date: new Date().toISOString()
+        success: false,
+        message: 'Terjadi kesalahan saat memproses struk',
+        fallback: {
+          description: 'Transaksi Baru',
+          amount: 0,
+          date: new Date().toISOString()
+        }
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

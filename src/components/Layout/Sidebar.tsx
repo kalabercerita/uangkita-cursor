@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
   Home,
   Wallet,
@@ -11,7 +10,11 @@ import {
   Bell,
   User,
   Menu,
-  ArrowLeftRight
+  ArrowLeftRight,
+  PieChart,
+  Receipt,
+  Tags,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,13 +39,18 @@ import {
   DialogContent, 
   DialogTrigger 
 } from '@/components/ui/dialog';
+import { useSettings } from "@/hooks/useSettings";
+import { supabase } from "@/integrations/supabase/client";
 
 // Settings storage key (must match the one in Settings.tsx)
 const SETTINGS_STORAGE_KEY = 'uangkita_app_settings';
 
-const Sidebar = () => {
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export function Sidebar({ className }: SidebarProps) {
   const { wallets } = useFinance();
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showFinancialFacilities, setShowFinancialFacilities] = useState(false);
@@ -51,6 +59,8 @@ const Sidebar = () => {
     { id: 2, title: 'Pengingat Tagihan', message: 'Tagihan listrik akan jatuh tempo besok', time: '1 jam yang lalu', read: false },
     { id: 3, title: 'Target Tabungan', message: 'Anda telah mencapai 75% target tabungan', time: '2 hari yang lalu', read: false },
   ]);
+  const { settings } = useSettings();
+  const [isLoading, setIsLoading] = useState(false);
   
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -87,6 +97,17 @@ const Sidebar = () => {
   const handleOpenNotifications = () => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
     setIsNotificationOpen(true);
+  };
+
+  const handleSignOut = async () => {
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const sidebarContent = (
@@ -367,6 +388,6 @@ const Sidebar = () => {
       </div>
     </>
   );
-};
+}
 
 export default Sidebar;

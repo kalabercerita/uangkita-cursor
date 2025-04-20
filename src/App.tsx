@@ -20,6 +20,11 @@ import FinancialFacilities from "./components/FinancialFacilities";
 import Wallets from "./pages/Wallets";
 import Settings from "./pages/Settings";
 import Index from "./pages/Index";
+import Categories from "./pages/Categories";
+import Statistics from "./pages/Statistics";
+import { useEffect } from "react";
+import { supabase } from "./integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 // Initialize QueryClient inside the component to ensure it's created during rendering
 const App = () => {
@@ -32,6 +37,16 @@ const App = () => {
       },
     },
   }), []);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        navigate('/login');
+      }
+    });
+  }, [navigate]);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -54,6 +69,8 @@ const App = () => {
                   <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
                   <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
                   <Route path="/currency-converter" element={<AppLayout><FinancialFacilities /></AppLayout>} />
+                  <Route path="/categories" element={<AppLayout><Categories /></AppLayout>} />
+                  <Route path="/statistics" element={<AppLayout><Statistics /></AppLayout>} />
                   
                   <Route path="/index" element={<Index />} />
                   <Route path="*" element={<NotFound />} />

@@ -38,15 +38,20 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Category } from '@/types';
+import { supabase } from "@/integrations/supabase/client";
 
 // Create a new type for app settings
-type AppSettings = {
-  showFinancialFacilities: boolean;
+interface AppSettings {
+  darkMode: boolean;
+  showBalance: boolean;
+  enableNotifications: boolean;
 }
 
 // Default app settings
 const defaultSettings: AppSettings = {
-  showFinancialFacilities: false
+  darkMode: false,
+  showBalance: true,
+  enableNotifications: true,
 };
 
 // Create a settings key for localStorage
@@ -104,24 +109,45 @@ const Settings = () => {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
   }, [appSettings]);
 
-  const handleToggleFinancialFacilities = (checked: boolean) => {
+  const handleToggleDarkMode = (checked: boolean) => {
     setAppSettings(prev => ({
       ...prev,
-      showFinancialFacilities: checked
+      darkMode: checked
     }));
-  };
-
-  const handleThemeChange = (checked: boolean) => {
     setTheme(checked ? 'dark' : 'light');
   };
 
-  const handleResetData = () => {
-    toast({
-      title: "Fitur belum tersedia",
-      description: "Fitur ini akan tersedia di versi mendatang",
-    });
+  const handleToggleShowBalance = (checked: boolean) => {
+    setAppSettings(prev => ({
+      ...prev,
+      showBalance: checked
+    }));
   };
-  
+
+  const handleToggleNotifications = (checked: boolean) => {
+    setAppSettings(prev => ({
+      ...prev,
+      enableNotifications: checked
+    }));
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Berhasil keluar",
+        description: "Anda telah berhasil keluar dari aplikasi",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Gagal keluar",
+        description: "Terjadi kesalahan saat mencoba keluar",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddCategory = () => {
     if (!newCategory.name) {
       toast({
@@ -224,21 +250,35 @@ const Settings = () => {
               <Switch 
                 id="dark-mode" 
                 checked={theme === 'dark'}
-                onCheckedChange={handleThemeChange}
+                onCheckedChange={handleToggleDarkMode}
               />
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-financial-facilities" className="flex flex-col space-y-1">
-                <span>Tampilkan Fasilitas Keuangan</span>
+              <Label htmlFor="show-balance" className="flex flex-col space-y-1">
+                <span>Tampilkan Saldo</span>
                 <span className="font-normal text-sm text-muted-foreground">
-                  Tampilkan menu fasilitas keuangan di aplikasi
+                  Tampilkan atau sembunyikan saldo dompet Anda
                 </span>
               </Label>
               <Switch 
-                id="show-financial-facilities" 
-                checked={appSettings.showFinancialFacilities}
-                onCheckedChange={handleToggleFinancialFacilities}
+                id="show-balance" 
+                checked={appSettings.showBalance}
+                onCheckedChange={handleToggleShowBalance}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notifications" className="flex flex-col space-y-1">
+                <span>Notifikasi</span>
+                <span className="font-normal text-sm text-muted-foreground">
+                  Aktifkan notifikasi untuk mendapatkan pengingat dan pembaruan penting
+                </span>
+              </Label>
+              <Switch 
+                id="notifications" 
+                checked={appSettings.enableNotifications}
+                onCheckedChange={handleToggleNotifications}
               />
             </div>
           </CardContent>
@@ -554,9 +594,9 @@ const Settings = () => {
             
             <Button 
               variant="destructive" 
-              onClick={handleResetData}
+              onClick={handleSignOut}
             >
-              Reset Semua Data
+              Keluar
             </Button>
           </CardContent>
         </Card>
